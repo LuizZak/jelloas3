@@ -1,0 +1,39 @@
+<projectDescription>
+  <id>1288385550185</id>
+  <name>JelloAS3</name>
+  <asVersion>0</asVersion>
+  <boundTemplate>file:///C|/Users/Luiz Fernando/AppData/Local/Adobe/Flash CS5/en_US/Configuration/ActionScript 3.0/Templates/boundClass_as3.as</boundTemplate>
+  <classTemplate>file:///C|/Users/Luiz Fernando/AppData/Local/Adobe/Flash CS5/en_US/Configuration/ActionScript 3.0/Templates/standardClass_as3.as</classTemplate>
+  <classPath>.</classPath>
+  <defaultApp>file:///C|/Backup/Meus documentos/Jogos/JelloAS3/src/JelloFlash.fla</defaultApp>
+  <rootURI>file:///C|/Backup/Meus documentos/Jogos/JelloAS3/src/</rootURI>
+  <flexSDK/>
+  <sources editable="false"/>
+  <libraries editable="false"/>
+  <externalLibraries editable="false"/>
+  <compileList editable="false">
+    <uri label="JelloFlash.fla">file:///C|/Backup/Meus documentos/Jogos/JelloAS3/src/JelloFlash.fla</uri>
+  </compileList>
+  <recentFiles editable="false">
+    <uri label="BodyCollisionInfo.as">file:///C|/Backup/Meus documentos/Jogos/JelloAS3/src/JelloAS3/BodyCollisionInfo.as</uri>
+    <uri label="RenderingSettings.as">file:///C|/Backup/Meus documentos/Jogos/JelloAS3/src/JelloAS3/RenderingSettings.as</uri>
+    <uri label="Vector3.as">file:///C|/Backup/Meus documentos/Jogos/JelloAS3/src/JelloAS3/Vector3.as</uri>
+    <uri label="PointMass.as">file:///C|/Backup/Meus documentos/Jogos/JelloAS3/src/JelloAS3/PointMass.as</uri>
+    <uri label="PressureBody.as">file:///C|/Backup/Meus documentos/Jogos/JelloAS3/src/JelloAS3/PressureBody.as</uri>
+    <uri label="SpringBody.as">file:///C|/Backup/Meus documentos/Jogos/JelloAS3/src/JelloAS3/SpringBody.as</uri>
+    <uri label="World.as">file:///C|/Backup/Meus documentos/Jogos/JelloAS3/src/JelloAS3/World.as</uri>
+    <uri label="Vector2.as">file:///C|/Backup/Meus documentos/Jogos/JelloAS3/src/JelloAS3/Vector2.as</uri>
+    <uri label="ClosedShape.as">file:///C|/Backup/Meus documentos/Jogos/JelloAS3/src/JelloAS3/ClosedShape.as</uri>
+    <uri label="VectorTools.as">file:///C|/Backup/Meus documentos/Jogos/JelloAS3/src/JelloAS3/VectorTools.as</uri>
+    <uri label="Body.as">file:///C|/Backup/Meus documentos/Jogos/JelloAS3/src/JelloAS3/Body.as</uri>
+    <uri label="DraggablePressureBody.as">file:///C|/Backup/Meus documentos/Jogos/JelloAS3/src/JelloAS3/DraggablePressureBody.as</uri>
+    <uri label="Main.as">file:///C|/Backup/Meus documentos/Jogos/JelloAS3/src/Main.as</uri>
+    <uri label="DraggableSpringBody.as">file:///C|/Backup/Meus documentos/Jogos/JelloAS3/src/JelloAS3/DraggableSpringBody.as</uri>
+    <uri label="JelloFlash.fla">file:///C|/Backup/Meus documentos/Jogos/JelloAS3/src/JelloFlash.fla</uri>
+    <uri label="InternalSpring.as">file:///C|/Backup/Meus documentos/Jogos/JelloAS3/src/JelloAS3/InternalSpring.as</uri>
+    <uri label="AABB.as">file:///C|/Backup/Meus documentos/Jogos/JelloAS3/src/JelloAS3/AABB.as</uri>
+    <uri label="MaterialPair.as">file:///C|/Backup/Meus documentos/Jogos/JelloAS3/src/JelloAS3/MaterialPair.as</uri>
+    <uri label="FallingBody.as">file:///C|/Backup/Meus documentos/Jogos/JelloAS3/src/JelloAS3/FallingBody.as</uri>
+  </recentFiles>
+  <locations editable="false"/>
+</projectDescription>
