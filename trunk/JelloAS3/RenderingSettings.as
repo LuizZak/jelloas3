@@ -9,13 +9,13 @@
 	public class RenderingSettings
 	{
 		// The point size of points drawn on screen (this value is independent of the Scale vector)
-		public static var PointSize:Number = 2;
+		public static var PointSize:Number = 3;
 		
 		// Why is the Y vector negative? The engine is a port of an XNA engine (JelloPhysics).
 		// XNA is basicly 3D, so the Y vector grows up instead of down, like in a 2D screen (Say, Flash)
-		public static var Scale:Vector2 = new Vector2(55, -55);
+		public static var Scale:Vector2 = new Vector2(25.8, -25.8);
 		
 		// The offset is independent of the scale, unlike Flash DisplayObject's x-y coordinates and scaleX-scaleY
-		public static var Offset:Vector2 = new Vector2(400, 300);
+		public static var Offset:Vector2 = new Vector2(400, 21);
 	}
 }

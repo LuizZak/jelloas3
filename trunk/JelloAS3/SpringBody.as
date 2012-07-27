@@ -117,7 +117,13 @@ package JelloAS3
         /// <param name="damping">spring damping</param>
         public function addInternalSpring(pointA:int, pointB:int, springK:Number, damping:Number) : void
         {
-            var dist:Number = mPointMasses[pointB].Position.minus(mPointMasses[pointA].Position).magnitude();
+            // var dist:Number = mPointMasses[pointB].Position.minus(mPointMasses[pointA].Position).magnitude();
+			
+			var dx:Number = mPointMasses[pointB].PositionX - mPointMasses[pointA].PositionX;
+			var dy:Number = mPointMasses[pointB].PositionY - mPointMasses[pointA].PositionY;
+			
+			var dist:Number = Math.sqrt(dx * dx + dy * dy);
+			
             var s:InternalSpring = new InternalSpring(pointA, pointB, dist, springK, damping);
 			
             mSprings.push(s);
@@ -212,14 +218,20 @@ package JelloAS3
             {
                 var s:InternalSpring = mSprings[i];
 				
-                VectorTools.calculateSpringForce(mPointMasses[s.pointMassA].Position, mPointMasses[s.pointMassA].Velocity, mPointMasses[s.pointMassB].Position, mPointMasses[s.pointMassB].Velocity, 
-                    							 s.springD, s.springK, s.damping, force);
-					
-                mPointMasses[s.pointMassA].Force.X += force.X;
-                mPointMasses[s.pointMassA].Force.Y += force.Y;
+				var p1:PointMass = mPointMasses[s.pointMassA];
+				var p2:PointMass = mPointMasses[s.pointMassB];
 				
-                mPointMasses[s.pointMassB].Force.X -= force.X;
-                mPointMasses[s.pointMassB].Force.Y -= force.Y;
+                VectorTools.calculateSpringForceNum(p1.PositionX, p1.PositionY,
+													p1.VelocityX, p1.VelocityY,
+													p2.PositionX, p2.PositionY,
+													p2.VelocityX, p2.VelocityY,
+													s.springD, s.springK, s.damping, force);
+					
+                p1.ForceX += force.X;
+                p1.ForceY += force.Y;
+				
+                p2.ForceX -= force.X;
+                p2.ForceY -= force.Y;
             }
 			
             // shape matching forces.
@@ -229,21 +241,31 @@ package JelloAS3
 				
                 for (i = 0; i < mPointMasses.length; i++)
                 {
+					var p:PointMass = mPointMasses[i];
+					
                     if (mShapeSpringK > 0)
                     {
                         if (!mKinematic)
                         {
-                            VectorTools.calculateSpringForce(mPointMasses[i].Position, mPointMasses[i].Velocity, mGlobalShape[i], mPointMasses[i].Velocity, 0.0, mShapeSpringK, mShapeSpringDamp, force);
+                            VectorTools.calculateSpringForceNum(p.PositionX, p.PositionY, 
+																p.VelocityX, p.VelocityY,
+																mGlobalShape[i].X, mGlobalShape[i].Y,
+																p.VelocityX, p.VelocityY,
+																0.0, mShapeSpringK, mShapeSpringDamp, force);
                         }
                         else
                         {
-                            var kinVel:Vector2 = Vector2.Zero.clone();
+                            // var kinVel:Vector2 = Vector2.Zero.clone();
 							
-                            VectorTools.calculateSpringForce(mPointMasses[i].Position, mPointMasses[i].Velocity, mGlobalShape[i], kinVel, 0.0, mShapeSpringK, mShapeSpringDamp, force);
+                            VectorTools.calculateSpringForceNum(p.PositionX, p.PositionY,
+																p.VelocityX, p.VelocityY,
+																mGlobalShape[i].X, mGlobalShape[i].Y,
+																0, 0,
+																0.0, mShapeSpringK, mShapeSpringDamp, force);
                         }
 						
-                        mPointMasses[i].Force.X += force.X;
-                        mPointMasses[i].Force.Y += force.Y;
+                        p.ForceX += force.X;
+                        p.ForceY += force.Y;
                     }
                 }
             }
@@ -264,24 +286,22 @@ package JelloAS3
 			var s:Vector2 = RenderingSettings.Scale;
 			var p:Vector2 = RenderingSettings.Offset;
 			
-            mBaseShape.transformVertices(mDerivedPos, mDerivedAngle, mScale, mGlobalShape);
+			g.lineStyle(0, 0, 0);
 			
             for (var i:int = 0; i < mPointMasses.length; i++)
             {
-				g.lineStyle(0, 0, 0);
+				//g.beginFill(0x7CFC00);
 				
-				g.beginFill(0x7CFC00);
-				
-				var x:Number = mPointMasses[i].Position.X// - RenderingSettings.PointSize / 2;
-				var y:Number = mPointMasses[i].Position.Y// - RenderingSettings.PointSize / 2;
+				var x:Number = mPointMasses[i].PositionX// - RenderingSettings.PointSize / 2;
+				var y:Number = mPointMasses[i].PositionY// - RenderingSettings.PointSize / 2;
 				var w:Number = RenderingSettings.PointSize * 2;
 				var h:Number = RenderingSettings.PointSize * 2;
 				
-				g.drawRect(x * s.X + p.X - RenderingSettings.PointSize, y * s.Y + p.Y - RenderingSettings.PointSize, w, h);
+				//g.drawRect(x * s.X + p.X - RenderingSettings.PointSize, y * s.Y + p.Y - RenderingSettings.PointSize, w, h);
 				
-				g.endFill();
+				//g.endFill();
 				
-				g.beginFill(0x20B2AA);
+				g.beginFill(0x808080);
 				
 				x = mGlobalShape[i].X;
 				y = mGlobalShape[i].Y;
@@ -291,19 +311,20 @@ package JelloAS3
 				g.drawRect(x * s.X + p.X - RenderingSettings.PointSize, y * s.Y + p.Y - RenderingSettings.PointSize, w, h);
 				
 				g.endFill();
+				
+				g.lineStyle(1, 0x808080);
+				
+				g.moveTo(x * s.X + p.X, y * s.Y + p.Y);
+				
+				g.lineTo(mPointMasses[i].PositionX * s.X + p.X, mPointMasses[i].PositionY * s.Y + p.Y);
             }
 			
             for (i = 0; i < mSprings.length; i++)
             {
 				g.lineStyle(0, 0x7CFC00);
 				
-				g.moveTo(mPointMasses[mSprings[i].pointMassA].Position.X * s.X + p.X, mPointMasses[mSprings[i].pointMassA].Position.Y * s.Y + p.Y);
-				g.lineTo(mPointMasses[mSprings[i].pointMassB].Position.X * s.X + p.X, mPointMasses[mSprings[i].pointMassB].Position.Y * s.Y + p.Y);
-				
-                /*springs[(i * 2) + 0].Position = VectorTools.vec3FromVec2(mPointMasses[mSprings[i].pointMassA].Position);
-                springs[(i * 2) + 0].Color = Color.LawnGreen;
-                springs[(i * 2) + 1].Position = VectorTools.vec3FromVec2(mPointMasses[mSprings[i].pointMassB].Position);
-                springs[(i * 2) + 1].Color = Color.LightSeaGreen;*/
+				g.moveTo(mPointMasses[mSprings[i].pointMassA].PositionX * s.X + p.X, mPointMasses[mSprings[i].pointMassA].PositionY * s.Y + p.Y);
+				g.lineTo(mPointMasses[mSprings[i].pointMassB].PositionX * s.X + p.X, mPointMasses[mSprings[i].pointMassB].PositionY * s.Y + p.Y);
             }
 			
             /*device.VertexDeclaration = mVertexDecl;
@@ -317,7 +338,7 @@ package JelloAS3
             }
             effect.End();*/
 			
-            super.debugDrawMe(g);
+			super.debugDrawMe(g);
         }
     }
 }

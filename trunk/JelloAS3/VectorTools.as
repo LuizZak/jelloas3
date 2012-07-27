@@ -37,6 +37,10 @@ package JelloAS3
         /// <returns>rotated vector</returns>
         public static function rotateVector(vec:Vector2, angleRadians:Number) : Vector2
         {
+			// If ther's nothing to rotate, then don't!
+			if(angleRadians == 0)
+				return vec.clone();
+			
             var ret:Vector2 = new Vector2();
 			
             var c:Number = Math.cos(angleRadians);
@@ -79,7 +83,7 @@ package JelloAS3
         }*/
 		
         /// <summary>
-        ///  reflect a vector about a normal.  Normal must be a unit vector.
+        /// Reflect a vector about a normal.  Normal must be a unit vector.
         /// </summary>
         /// <param name="V">vector</param>
         /// <param name="N">normal</param>
@@ -156,16 +160,12 @@ package JelloAS3
         /// <param name="A">vector A</param>
         /// <param name="B">vector B</param>
         /// <returns>true = CCW or opposite (180 degrees), false = CW</returns>
+		private static var perp:Vector2 = new Vector2();
         public static function isCCW(A:Vector2, B:Vector2) : Boolean
         {
-            var perp:Vector2 = new Vector2();
             VectorTools.getPerpendicular(A, perp);
-            var dot:Number;
-            
-			dot = B.dot(perp);
 			
-            // Vector2.dot(B, perp, dot);
-            return (dot >= 0.0);
+            return (B.dot(perp) >= 0.0);
         }
 		
         /// <summary>
@@ -255,8 +255,10 @@ package JelloAS3
             var UaTop:Number = ((ptD.X - ptC.X) * (ptA.Y - ptC.Y)) - ((ptD.Y - ptC.Y) * (ptA.X - ptC.X));
             var UbTop:Number = ((ptB.X - ptA.X) * (ptA.Y - ptC.Y)) - ((ptB.Y - ptA.Y) * (ptA.X - ptC.X));
 			
-            Ua[0] = UaTop / denom;
-            Ub[0] = UbTop / denom;
+			var revDenom = 1 / denom;
+			
+            Ua[0] = UaTop * revDenom;
+            Ub[0] = UbTop * revDenom;
 			
             if ((Ua[0] >= 0) && (Ua[0] <= 1) && (Ub[0] >= 0) && (Ub[0] <= 1))
             {
@@ -347,8 +349,10 @@ package JelloAS3
 			
             if (dist > 0.0001)
             {
-                BtoAX /= dist;
-                BtoAY /= dist;
+				var revDist = 1 / dist;
+				
+                BtoAX *= revDist;
+                BtoAY *= revDist;
             }
             else
             {
@@ -367,6 +371,68 @@ package JelloAS3
 			
             forceOut.X = BtoAX * ((dist * springK) - (totalRelVel * damping));
             forceOut.Y = BtoAY * ((dist * springK) - (totalRelVel * damping));
+        }
+		
+		public static function calculateSpringForceNum(posAX:Number, posAY:Number, velAX:Number, velAY:Number, posBX:Number, posBY:Number, velBX:Number,
+													   velBY:Number, springD:Number, springK:Number, damping:Number, forceOut:Vector2) : void
+        {
+            var BtoAX:Number = (posAX - posBX);
+            var BtoAY:Number = (posAY - posBY);
+			
+            var dist:Number = Math.sqrt((BtoAX * BtoAX) + (BtoAY * BtoAY));
+			
+            if (dist > 0.0001)
+            {
+				var revDist = 1 / dist;
+				
+                BtoAX *= revDist;
+                BtoAY *= revDist;
+            }
+            else
+            {
+                forceOut.X = 0;
+                forceOut.Y = 0;
+				
+                return;
+            }
+			
+            dist = springD - dist;
+			
+            var relVelX:Number = velAX - velBX;
+            var relVelY:Number = velAY - velBY;
+			
+            var totalRelVel:Number = (relVelX * BtoAX) + (relVelY * BtoAY);
+			
+            forceOut.X = BtoAX * ((dist * springK) - (totalRelVel * damping));
+            forceOut.Y = BtoAY * ((dist * springK) - (totalRelVel * damping));
+        }
+		
+		public static function calculateSpringForceRetPos(posAX:Number, posAY:Number, velAX:Number, velAY:Number, posBX:Number, posBY:Number,
+														  velBX:Number, velBY:Number, springD:Number, springK:Number, damping:Number) : Vector2
+        {
+            var BtoAX:Number = (posAX - posBX);
+            var BtoAY:Number = (posAY - posBY);
+			
+            var dist:Number = Math.sqrt((BtoAX * BtoAX) + (BtoAY * BtoAY));
+			
+            if (dist > 0.0001)
+            {
+                BtoAX /= dist;
+                BtoAY /= dist;
+            }
+            else
+            {
+                return Vector2.Zero.clone();
+            }
+			
+            dist = springD - dist;
+			
+            var relVelX:Number = velAX - velBX;
+            var relVelY:Number = velAY - velBY;
+			
+            var totalRelVel:Number = (relVelX * BtoAX) + (relVelY * BtoAY);
+			
+			return new Vector2(BtoAX * ((dist * springK) - (totalRelVel * damping)), BtoAY * ((dist * springK) - (totalRelVel * damping)));
         }
 		
 		public static function calculateSpringForceRet(posA:Vector2, velA:Vector2, posB:Vector2, velB:Vector2, springD:Number, springK:Number, damping:Number) : Vector2

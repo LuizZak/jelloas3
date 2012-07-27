@@ -22,10 +22,7 @@ THE SOFTWARE.
 
 package JelloAS3 
 {
-	import adobe.utils.CustomActions;
-	import flash.net.DynamicPropertyOutput;
 	import flash.display.Graphics;
-	import flash.text.engine.RenderingMode;
 	
 	/**
 	 * ...
@@ -35,19 +32,21 @@ package JelloAS3
     {
         // PRIVATE VARIABLES
         protected var mBaseShape:ClosedShape;
-        protected var mGlobalShape:Array;
-        protected var mPointMasses:Vector.<PointMass>;
+        public var mGlobalShape:Vector.<Vector2>;
+        public var mPointMasses:Vector.<PointMass>;
         protected var mScale:Vector2;
         protected var mDerivedPos:Vector2;
         protected var mDerivedVel:Vector2;
         protected var mDerivedAngle:Number;
         protected var mDerivedOmega:Number;
         protected var mLastAngle:Number;
-        protected var mAABB:AABB;
+        public var mAABB:AABB;
         protected var mMaterial:int;
         protected var mIsStatic:Boolean;
         protected var mKinematic:Boolean;
         protected var mObjectTag:*;
+		
+		public var mIsPined:Boolean = false;
 		
         protected var mVelDamping:Number = 0.999;
 		
@@ -137,7 +136,9 @@ package JelloAS3
             setShape(shape);
 			
             for (var i:int = 0; i < mPointMasses.length; i++)
+			{
                 mPointMasses[i].Mass = pointMasses[i];
+			}
 				
             updateAABB(0, true);
 			
@@ -162,13 +163,16 @@ package JelloAS3
             {
                 mPointMasses.length = 0;
 				
-                mGlobalShape = new Array();
+                mGlobalShape = new Vector.<Vector2>();
 				mGlobalShape.length = mBaseShape.Vertices.length;
                 
                 mBaseShape.transformVertices(mDerivedPos, mDerivedAngle, mScale, mGlobalShape);
 				
-                for (var i:int = 0; i < mBaseShape.Vertices.length; i++)
-                    mPointMasses.push(new PointMass(0.0, mGlobalShape[i]));               
+				var count:int = mBaseShape.Vertices.length;
+                for (var i:int = 0; i < count; i++)
+				{
+                    mPointMasses.push(new PointMass(0.0, mGlobalShape[i]));    
+				}
             }
         }
         
@@ -180,8 +184,11 @@ package JelloAS3
         /// <param name="mass">new mass</param>
         public function setMassAll(mass:Number) : void
         {
-            for (var i:int = 0; i < mPointMasses.length; i++)
+			var count:int = mPointMasses.length;
+            for (var i:int = 0; i < count; i++)
+			{
                 mPointMasses[i].Mass = mass;
+			}
 			
             if (Number.POSITIVE_INFINITY == mass) { mIsStatic = true; }
         }
@@ -205,8 +212,11 @@ package JelloAS3
         {
             if (masses.length == mPointMasses.length)
             {
-                for (var i:int = 0; i < mPointMasses.length; i++)
+                var count:int = mPointMasses.length;
+            	for (var i:int = 0; i < count; i++)
+				{
                     mPointMasses[i].Mass = masses[i];
+				}
             }
         }
 		
@@ -234,11 +244,27 @@ package JelloAS3
         /// <param name="angleInRadians">global angle</param>
         public function setPositionAngle(pos:Vector2, angleInRadians:Number, scale:Vector2) : void
         {
-            mBaseShape.transformVertices(pos, angleInRadians, scale, mGlobalShape);
+			if(mGlobalShape == null)
+			{
+				mGlobalShape = new Vector.<Vector2>();
+			}
 			
-            for (var i:int = 0; i < mPointMasses.length; i++)
-                mPointMasses[i].Position = mGlobalShape[i];
+            mBaseShape.transformVertices(pos == null ? mDerivedPos : pos, angleInRadians, scale == null ? new Vector2(1, 1) : scale, mGlobalShape);
+			
+			var p:PointMass;
+			var v:Vector2;
+			
+			var count:int = mPointMasses.length;
+            for (var i:int = 0; i < count; i++)
+			{
+				p = mPointMasses[i];
+				v = mGlobalShape[i];
 				
+                p.PositionX = v.X;
+				p.PositionY = v.Y;
+			}
+			
+			if(pos != null)
             mDerivedPos = pos;
             mDerivedAngle = angleInRadians;
         }
@@ -280,38 +306,42 @@ package JelloAS3
         /// This updates the DerivedPosision, DerivedAngle, and DerivedVelocity properties.
         /// This is called by the World object each Update(), so usually a user does not need to call this.  Instead
         /// you can juse access the DerivedPosition, DerivedAngle, DerivedVelocity, and DerivedOmega properties.
-        public function derivePositionAndAngle(elaspsed:Number) : void
+		/*public function derivePositionAndAngle(elaspsed:Number) : void
         {
             // no need it this is a static body, or kinematically controlled.
             if (mIsStatic || mKinematic)
                 return;
 				
             // find the geometric center.
-            var center:Vector2 = new Vector2();
-            center.X = 0;
-            center.Y = 0;
+            //var center:Vector2 = new Vector2();
+			var centerX:Number = 0, centerY:Number = 0;
 			
-            var vel:Vector2 = new Vector2();
-            vel.X = 0;
-            vel.Y = 0;
+            //var vel:Vector2 = new Vector2();
+			var velX:Number = 0, velY:Number = 0;
 			
-            for (var i:int = 0; i < mPointMasses.length; i++)
+			var p:PointMass;
+			
+			var l:int = mPointMasses.length;
+			
+            for (var i:int = 0; i < l; i++)
             {
-                center.X += mPointMasses[i].Position.X;
-                center.Y += mPointMasses[i].Position.Y;
+				p = mPointMasses[i];
 				
-                vel.X += mPointMasses[i].Velocity.X;
-                vel.Y += mPointMasses[i].Velocity.Y;
+                centerX += p.PositionX;
+                centerY += p.PositionY;
+				
+                velX += p.VelocityX;
+                velY += p.VelocityY;
             }
 			
-            center.X /= mPointMasses.length;
-            center.Y /= mPointMasses.length;
+            centerX /= l;
+            centerY /= l;
 			
-            vel.X /= mPointMasses.length;
-            vel.Y /= mPointMasses.length;
+            velX /= l;
+            velY /= l;
 			
-            mDerivedPos = center;
-            mDerivedVel = vel;
+            mDerivedPos.setTo(centerX, centerY);
+            mDerivedVel = new Vector2(velX, velY);
 			
             // find the average angle of all of the masses.
             var angle:Number = 0;
@@ -319,8 +349,10 @@ package JelloAS3
 			var originalSign:int = 1;
             var originalAngle:Number = 0;
 			
-            for (i = 0; i < mPointMasses.length; i++)
+            for (i = 0; i < l; i++)
             {
+				p = mPointMasses[i];
+				
                 var baseNorm:Vector2 = new Vector2();
                 baseNorm.X = mBaseShape.Vertices[i].X;
                 baseNorm.Y = mBaseShape.Vertices[i].Y;
@@ -329,14 +361,13 @@ package JelloAS3
 				
                 var curNorm:Vector2 = new Vector2();
 				
-                curNorm.X = mPointMasses[i].Position.X - mDerivedPos.X;
-                curNorm.Y = mPointMasses[i].Position.Y - mDerivedPos.Y;
+                curNorm.X = p.PositionX - mDerivedPos.X;
+                curNorm.Y = p.PositionY - mDerivedPos.Y;
 				
                 // Vector2.Normalize(curNorm, curNorm);
 				curNorm.normalizeThis();
 				
-                var dot:Number;
-                dot = Vector2.Dot(baseNorm, curNorm);
+                var dot:Number = Vector2.Dot(baseNorm, curNorm);
 				
                 if (dot > 1.0) { dot = 1.0; }
                 if (dot < -1.0) { dot = -1.0; }
@@ -364,7 +395,124 @@ package JelloAS3
                 angle += thisAngle;
             }
 			
-            angle /= mPointMasses.length;
+            angle /= l;
+			
+			trace(angle);
+            mDerivedAngle = angle;
+			
+            // now calculate the derived Omega, based on change in angle over time.
+            var angleChange:Number = (mDerivedAngle - mLastAngle);
+			
+            if ((angleChange < 0 ? -angleChange : angleChange) >= Math.PI)
+            {
+                if (angleChange < 0)
+                    angleChange = angleChange + (Math.PI * 2);
+                else
+                    angleChange = angleChange - (Math.PI * 2);
+            }
+			
+            mDerivedOmega = angleChange / elaspsed;
+			
+            mLastAngle = mDerivedAngle;
+        }*/
+        public function derivePositionAndAngle(elaspsed:Number) : void
+        {
+            // no need it this is a static body, or kinematically controlled.
+            if (mIsStatic || mKinematic)
+				return;
+			
+			// Temp variables
+			var p:PointMass;
+			
+			// Precalculations
+			var l:int = mPointMasses.length;
+			var reverse_length:Number = 1.0 / l;
+			
+			//if(!mIsPined)
+			{
+				// find the geometric center.
+				//var center:Vector2 = new Vector2();
+				var centerX:Number = 0, centerY:Number = 0;
+				
+				//var vel:Vector2 = new Vector2();
+				var velX:Number = 0, velY:Number = 0;
+				
+				for (var i:int = 0; i < l; i++)
+				{
+					p = mPointMasses[i];
+					
+					centerX += p.PositionX;
+					centerY += p.PositionY;
+					
+					velX += p.VelocityX;
+					velY += p.VelocityY;
+				}
+				
+				centerX *= reverse_length;
+				centerY *= reverse_length;
+				
+				velX *= reverse_length;
+				velY *= reverse_length;
+				
+				mDerivedPos.setTo(centerX, centerY);
+            	mDerivedVel = new Vector2(velX, velY);
+			}
+			
+            // find the average angle of all of the masses.
+            var angle:Number = 0;
+            
+			var originalSign:int = 1;
+            var originalAngle:Number = 0;
+			
+            for (i = 0; i < l; i++)
+            {
+				p = mPointMasses[i];
+				
+                var baseNorm:Vector2 = new Vector2(); var baseShapeVertice:Vector2 = mBaseShape.Vertices[i];
+                baseNorm.X = baseShapeVertice.X;
+                baseNorm.Y = baseShapeVertice.Y;
+				
+                //Vector2.Normalize(baseNorm, baseNorm);
+				baseNorm.normalizeThis();
+				
+                var curNorm:Vector2 = new Vector2();
+				
+                curNorm.X = p.PositionX - mDerivedPos.X;
+                curNorm.Y = p.PositionY - mDerivedPos.Y;
+				
+                // Vector2.Normalize(curNorm, curNorm);
+				curNorm.normalizeThis();
+				
+                var dot:Number = Vector2.Dot(baseNorm, curNorm);
+				
+                if (dot > 1.0) { dot = 1.0; }
+                if (dot < -1.0) { dot = -1.0; }
+				
+                var thisAngle:Number = Math.acos(dot);
+				
+                if (!VectorTools.isCCW(baseNorm, curNorm)) { thisAngle = -thisAngle; }
+				
+                if (i == 0)
+                {
+                    originalSign = (thisAngle >= 0.0) ? 1 : -1;
+                    originalAngle = thisAngle;
+                }
+                else
+                {
+                    var diff:Number = (thisAngle - originalAngle);
+                    var thisSign:int = (thisAngle >= 0.0) ? 1 : -1;
+					
+                    if (((diff < 0 ? -diff : diff) > Math.PI) && (thisSign != originalSign))
+                    {
+                        thisAngle = (thisSign == -1) ? (Math.PI + (Math.PI + thisAngle)) : ((Math.PI - thisAngle) - Math.PI);
+                    }
+                }
+				
+                angle += thisAngle;
+            }
+			
+            angle /= l;
+			
             mDerivedAngle = angle;
 			
             // now calculate the derived Omega, based on change in angle over time.
@@ -433,18 +581,24 @@ package JelloAS3
         {
             if (mIsStatic) { return; }
 			
-            for (var i:int = 0; i < mPointMasses.length; i++)
+            var points_count:int = mPointMasses.length;
+            for (var i:int = 0; i < points_count; i++)
+			{
                 mPointMasses[i].integrateForce(elapsed);
+			}
         }
 		
         internal function dampenVelocity() : void
         {
             if (mIsStatic) { return; }
 			
-            for (var i:int = 0; i < mPointMasses.length; i++)
+            var points_count:int = mPointMasses.length;
+            for (var i:int = 0; i < points_count; i++)
             {
-                mPointMasses[i].Velocity.X *= mVelDamping;
-                mPointMasses[i].Velocity.Y *= mVelDamping;
+				var p:PointMass = mPointMasses[i];
+				
+               	p.VelocityX *= mVelDamping;
+                p.VelocityY *= mVelDamping;
             }
         }
 		
@@ -460,18 +614,17 @@ package JelloAS3
             {
                 mAABB.clear();
 				
-                for (var i:int = 0; i < mPointMasses.length; i++)
+                var points_count:int = mPointMasses.length;
+                for (var i:int = 0; i < points_count; i++)
                 {
-                    var p:Vector2 = mPointMasses[i].Position;
+					var p:PointMass = mPointMasses[i];
 					
-                    mAABB.expandToInclude(p);
+                    mAABB.expandToIncludePos(p.PositionX, p.PositionY);
 					
 					// expanding for velocity only makes sense for dynamic objects.
                     if (!IsStatic)
                     {
-                        p.X += (mPointMasses[i].Velocity.X * elapsed);
-                        p.Y += (mPointMasses[i].Velocity.Y * elapsed);
-                        mAABB.expandToInclude(p);
+                        mAABB.expandToIncludePos(p.PositionX + (p.VelocityX * elapsed), p.PositionY + (p.VelocityY * elapsed));
                     }
                 }
             }
@@ -491,42 +644,109 @@ package JelloAS3
         /// </summary>
         /// <param name="pt">point in global space</param>
         /// <returns>true = point is inside body, false = it is not.</returns>
-        public function contains(pt:Vector2) : Boolean
+        public function contains(ptX:Number, ptY:Number) : Boolean
         {
             // basic idea: draw a line from the point to a point known to be outside the body.  count the number of
             // lines in the polygon it intersects.  if that number is odd, we are inside.  if it's even, we are outside.
             // in this implementation we will always use a line that moves off in the positive X direction from the point
             // to simplify things.
-            var endPt:Vector2 = new Vector2();
-            endPt.X = mAABB.Max.X + 0.1;
-            endPt.Y = pt.Y;
+            // var endPt:Vector2 = new Vector2();
+            var endPtX:Number = mAABB.Max.X + 0.1;
+            var endPtY:Number = ptY;
 			
             // line we are testing against goes from pt -> endPt.
             var inside:Boolean = false;
             
-			var edgeSt:Vector2 = mPointMasses[0].Position;
-            var edgeEnd:Vector2 = new Vector2();
+			// var edgeSt:Vector2 = mPointMasses[0].Position.clone();
+			
+			var edgeStX:Number = mPointMasses[0].PositionX;
+			var edgeStY:Number = mPointMasses[0].PositionY;
+			
+            var edgeEndX:Number = 0;
+			var edgeEndY:Number = 0;
+			
             var c:int = mPointMasses.length;
 			
             for (var i:int = 0; i < c; i++)
             {
                 // the current edge is defined as the line from edgeSt -> edgeEnd.
                 if (i < (c - 1))
-                    edgeEnd = mPointMasses[i + 1].Position;
-                else
-                    edgeEnd = mPointMasses[0].Position;
+				{
+                    edgeEndX = mPointMasses[i + 1].PositionX;
+					edgeEndY = mPointMasses[i + 1].PositionY;
+				}
+				else
+				{
+                    edgeEndX = mPointMasses[0].PositionX;
+					edgeEndY = mPointMasses[0].PositionY;
+				}
 				
                 // perform check now...
-                if (((edgeSt.Y <= pt.Y) && (edgeEnd.Y > pt.Y)) || ((edgeSt.Y > pt.Y) && (edgeEnd.Y <= pt.Y)))
+                if (((edgeStY <= ptY) && (edgeEndY > ptY)) || ((edgeStY > ptY) && (edgeEndY <= ptY)))
                 {
                     // this line crosses the test line at some point... does it do so within our test range?
-                    var slope:Number = (edgeEnd.X - edgeSt.X) / (edgeEnd.Y - edgeSt.Y);
-                    var hitX:Number = edgeSt.X + ((pt.Y - edgeSt.Y) * slope);
+                    var slope:Number = (edgeEndX - edgeStX) / (edgeEndY - edgeStY);
+                    var hitX:Number = edgeStX + ((ptY - edgeStY) * slope);
 					
-                    if ((hitX >= pt.X) && (hitX <= endPt.X))
+                    if ((hitX >= ptX) && (hitX <= endPtX))
                         inside = !inside;
                 }
-                edgeSt = edgeEnd;
+                edgeStX = edgeEndX;
+				edgeStY = edgeEndY;
+            }
+			
+            return inside;
+        }
+		
+		public function containsVec(pt:Vector2) : Boolean
+        {
+            // basic idea: draw a line from the point to a point known to be outside the body.  count the number of
+            // lines in the polygon it intersects.  if that number is odd, we are inside.  if it's even, we are outside.
+            // in this implementation we will always use a line that moves off in the positive X direction from the point
+            // to simplify things.
+            // var endPt:Vector2 = new Vector2();
+            var endPtX:Number = mAABB.Max.X + 0.1;
+            var endPtY:Number = pt.Y;
+			
+            // line we are testing against goes from pt -> endPt.
+            var inside:Boolean = false;
+            
+			// var edgeSt:Vector2 = mPointMasses[0].Position.clone();
+			
+			var edgeStX:Number = mPointMasses[0].PositionX;
+			var edgeStY:Number = mPointMasses[0].PositionY;
+			
+            var edgeEndX:Number = 0;
+			var edgeEndY:Number = 0;
+			
+            var c:int = mPointMasses.length;
+			
+            for (var i:int = 0; i < c; i++)
+            {
+                // the current edge is defined as the line from edgeSt -> edgeEnd.
+                if (i < (c - 1))
+				{
+                    edgeEndX = mPointMasses[i + 1].PositionX;
+					edgeEndY = mPointMasses[i + 1].PositionY;
+				}
+				else
+				{
+                    edgeEndX = mPointMasses[0].PositionX;
+					edgeEndY = mPointMasses[0].PositionY;
+				}
+				
+                // perform check now...
+                if (((edgeStY <= pt.Y) && (edgeEndY > pt.Y)) || ((edgeStY > pt.Y) && (edgeEndY <= pt.Y)))
+                {
+                    // this line crosses the test line at some point... does it do so within our test range?
+                    var slope:Number = (edgeEndX - edgeStX) / (edgeEndY - edgeStY);
+                    var hitX:Number = edgeStX + ((pt.Y - edgeStY) * slope);
+					
+                    if ((hitX >= pt.X) && (hitX <= endPtX))
+                        inside = !inside;
+                }
+                edgeStX = edgeEndX;
+				edgeStY = edgeEndY;
             }
 			
             return inside;
@@ -545,15 +765,16 @@ package JelloAS3
         /// <returns>distance</returns>
         public function getClosestPoint(pt:Vector2, hitPt:Vector2, normal:Vector2, pointA:Array, pointB:Array, edgeD:Array) : Number
         {
-            hitPt = Vector2.Zero.clone();
+            // hitPt = Vector2.Zero.clone();
             pointA[0] = -1;
             pointB[0] = -1;
             edgeD[0] = 0;
-            normal = Vector2.Zero.clone();
+            // normal = Vector2.Zero.clone();
 			
             var closestD:Number = 1000.0;
 			
-            for (var i:int = 0; i < mPointMasses.length; i++)
+            var points_count:int = mPointMasses.length;
+            for (var i:int = 0; i < points_count; i++)
             {
                 var tempHit:Vector2;
                 var tempNorm:Vector2;
@@ -566,14 +787,14 @@ package JelloAS3
                     closestD = dist;
                     pointA[0] = i;
 					
-                    if (i < (mPointMasses.length - 1))
+                    if (i < (points_count - 1))
                         pointB[0] = i + 1;
                     else
                         pointB[0] = 0;
 					
                     edgeD[0] = tempEdgeD[0];
                     normal.setToVec(tempNorm);
-                    hitPt = tempHit;
+                    hitPt.setToVec(tempHit);
                 }
             }
 			
@@ -590,6 +811,11 @@ package JelloAS3
         /// <param name="normal">returned normal on edge in global space</param>
         /// <param name="edgeD">returned distance along edge from ptA to ptB [0,1]</param>
         /// <returns>distance</returns>
+		private var toP3:Vector3 = new Vector3();
+		private var E3:Vector3 = new Vector3();
+		private var toP:Vector2 = new Vector2();
+		private var E:Vector2 = new Vector2();
+		private var n:Vector2 = new Vector2();
         public function getClosestPointOnEdge(pt:Vector2, edgeNum:int, hitPt:Vector2, normal:Vector2, edgeD:Array) : Number
         {
             /*hitPt = new Vector2();
@@ -600,24 +826,33 @@ package JelloAS3
             normal.X = 0;
             normal.Y = 0;*/
 			
-            edgeD[0] = 0;
-            var dist:Number = 0;
+            edgeD[0] = 0.0;
+            var dist:Number = 0.0;
 			
-            var ptA:Vector2 = mPointMasses[edgeNum].Position.clone();
-            var ptB:Vector2 = new Vector2();
+            // var ptA:Vector2 = mPointMasses[edgeNum].Position.clone();
+			
+			var ptAX:Number = mPointMasses[edgeNum].PositionX;
+			var ptAY:Number = mPointMasses[edgeNum].PositionY;
+			
+            var ptBX:Number = 0;
+			var ptBY:Number = 0;
 			
             if (edgeNum < (mPointMasses.length - 1))
-                ptB = mPointMasses[edgeNum + 1].Position.clone();
+			{
+                ptBX = mPointMasses[edgeNum + 1].PositionX;
+				ptBY = mPointMasses[edgeNum + 1].PositionY;
+			}
             else
-                ptB = mPointMasses[0].Position.clone();
-				
-            var toP:Vector2 = new Vector2();
-            toP.X = pt.X - ptA.X;
-            toP.Y = pt.Y - ptA.Y;
+			{
+                ptBX = mPointMasses[0].PositionX;
+				ptBY = mPointMasses[0].PositionY;
+			}
+            
+            toP.X = pt.X - ptAX;
+            toP.Y = pt.Y - ptAY;
 			
-            var E:Vector2 = new Vector2();
-            E.X = ptB.X - ptA.X;
-            E.Y = ptB.Y - ptA.Y;
+            E.X = ptBX - ptAX;
+            E.Y = ptBY - ptAY;
 			
             // get the length of the edge, and use that to normalize the vector.
             var edgeLength:Number = Math.sqrt((E.X * E.X) + (E.Y * E.Y));
@@ -629,7 +864,7 @@ package JelloAS3
             }
 			
             // normal
-            var n:Vector2 = new Vector2();
+            n.setTo(0, 0);
             VectorTools.getPerpendicular(E, n);
 			
             // calculate the distance!
@@ -640,43 +875,44 @@ package JelloAS3
             {
                 // x is outside the line segment, distance is from pt to ptA.
                 //dist = (pt - ptA).Length();
-                dist = Vector2.Distance(pt, ptA);
+                dist = Vector2.Distance(pt, new Vector2(ptAX, ptAY));
 				
-                hitPt.setToVec(ptA);
-                edgeD[0] = 0;
+                hitPt.setTo(ptAX, ptAY);
+                edgeD[0] = 0.0;
                 normal.setToVec(n);
-            }
+			}
             else if (x >= edgeLength)
             {
                 // x is outside of the line segment, distance is from pt to ptB.
                 //dist = (pt - ptB).Length();
-                dist = Vector2.Distance(pt, ptB);
+                dist = Vector2.Distance(pt, new Vector2(ptBX, ptBY));
 				
-                hitPt.setToVec(ptB);
-                edgeD[0] = 1;
-                normal.setToVec(n);
+                hitPt.setTo(ptBX, ptBY);
+                edgeD[0] = 1.0;
+                normal.X = n.X;
+				normal.Y = n.Y;
             }
             else
             {
                 // point lies somewhere on the line segment.
-                var toP3:Vector3 = new Vector3();
-				
+                
                 toP3.X = toP.X;
                 toP3.Y = toP.Y;
 				
-                var E3:Vector3 = new Vector3();
+                
                 E3.X = E.X;
                 E3.Y = E.Y;
 				
                 //dist = Math.Abs(Vector3.Cross(toP3, E3).Z);
                 Vector3.Cross(toP3, E3, E3);
                 
-				dist = (E3.Z < 0 ? -E3.Z : E3.Z);
+				dist = (E3.Z < 0.0 ? -E3.Z : E3.Z);
 				
-                hitPt.X = ptA.X + (E.X * x);
-                hitPt.Y = ptA.Y + (E.Y * x);
+                hitPt.X = ptAX + (E.X * x);
+                hitPt.Y = ptAY + (E.Y * x);
                 edgeD[0] = x / edgeLength;
-                normal.setToVec(n);
+                
+				normal.setToVec(n);
             }
 			
             return dist;
@@ -691,7 +927,7 @@ package JelloAS3
         /// <param name="normal">returned normal on edge in global space</param>
         /// <param name="edgeD">returned distance along edge from ptA to ptB [0,1]</param>
         /// <returns>distance</returns>
-        public function getClosestPointOnEdgeSquared(pt:Vector2, edgeNum:int, hitPt:Vector2, normal:Vector2, edgeD:Array) : Number
+        public function getClosestPointOnEdgeSquared(ptX:Number, ptY:Number, edgeNum:int, hitPt:Vector2, normal:Vector2, edgeD:Array) : Number
         {
             /*hitPt = new Vector2();
             hitPt.X = 0;
@@ -703,8 +939,8 @@ package JelloAS3
 			
             edgeD[0] = 0;
             var dist:Number = 0;
-			
-            var ptA:Vector2 = mPointMasses[edgeNum].Position.clone();
+            
+			/*var ptA:Vector2 = mPointMasses[edgeNum].Position.clone();
             var ptB:Vector2 = new Vector2();
 			
             if (edgeNum < (mPointMasses.length - 1))
@@ -718,7 +954,41 @@ package JelloAS3
 			
             var E:Vector2 = new Vector2();
             E.X = ptB.X - ptA.X;
-            E.Y = ptB.Y - ptA.Y;
+            E.Y = ptB.Y - ptA.Y;*/
+			
+			
+			var p:PointMass;
+			
+			p = mPointMasses[edgeNum];
+			
+			var ptAX:Number = p.PositionX;
+			var ptAY:Number = p.PositionY;
+			
+            var ptBX:Number = 0;
+			var ptBY:Number = 0;
+			
+            if (edgeNum < (mPointMasses.length - 1))
+			{
+				p = mPointMasses[edgeNum + 1];
+				
+                ptBX = p.PositionX;
+				ptBY = p.PositionY;
+			}
+            else
+			{
+				p = mPointMasses[0];
+				
+                ptBX = p.PositionX;
+				ptBY = p.PositionY;
+			}
+			
+            //var toP:Vector2 = new Vector2();
+            toP.X = ptX - ptAX;
+            toP.Y = ptY - ptAY;
+			
+            //var E:Vector2 = new Vector2();
+            E.X = ptBX - ptAX;
+            E.Y = ptBY - ptAY;
 			
             // get the length of the edge, and use that to normalize the vector.
             var edgeLength:Number = Math.sqrt((E.X * E.X) + (E.Y * E.Y));
@@ -730,8 +1000,11 @@ package JelloAS3
             }
 			
             // normal
-            var n:Vector2 = new Vector2();
-            VectorTools.getPerpendicular(E, n);
+            //var n:Vector2 = new Vector2();
+            // VectorTools.getPerpendicular(E, n);
+			
+			n.X = -E.Y;
+			n.Y = E.X;
 			
             // calculate the distance!
             var x:Number;
@@ -741,43 +1014,63 @@ package JelloAS3
             {
                 // x is outside the line segment, distance is from pt to ptA.
                 //dist = (pt - ptA).Length();
-                dist = Vector2.DistanceSquared(pt, ptA);
+                //dist = Vector2.DistanceSquared(new Vector2(ptX, ptY), new Vector2(ptAX, ptAY));
+				dist = (ptX - ptAX) * (ptX - ptAX) + (ptY - ptAY) * (ptY - ptAY);
 				
-                hitPt.setToVec(ptA);
+                //hitPt.setTo(ptAX, ptAY);
+				hitPt.X = ptAX;
+				hitPt.Y = ptAY;
+				
                 edgeD[0] = 0;
-                normal.setToVec(n);
+				
+                //normal.setToVec(n);
+				normal.X = n.X;
+				normal.Y = n.Y;
             }
             else if (x >= edgeLength)
             {
                 // x is outside of the line segment, distance is from pt to ptB.
                 //dist = (pt - ptB).Length();
-                dist = Vector2.DistanceSquared(pt, ptB);
+                dist = Vector2.DistanceSquared(new Vector2(ptX, ptY), new Vector2(ptBX, ptBY));
 				
-                hitPt.setToVec(ptB);
+                //hitPt.setTo(ptBX, ptBY);
+				hitPt.X = ptBX;
+				hitPt.Y = ptBY;
+				
                 edgeD[0] = 1;
-                normal.setToVec(n);
+                
+				//normal.setToVec(n);
+				normal.X = n.X;
+				normal.Y = n.Y;
             }
             else
             {
                 // point lies somewhere on the line segment.
-                var toP3:Vector3 = new Vector3();
+                //var toP3:Vector3 = new Vector3();
                 toP3.X = toP.X;
                 toP3.Y = toP.Y;
 				
-                var E3:Vector3 = new Vector3();
+                //var E3:Vector3 = new Vector3();
                 E3.X = E.X;
                 E3.Y = E.Y;
 				
                 // dist = Math.Abs(Vector3.Cross(toP3, E3).Z);
                 Vector3.Cross(toP3, E3, E3);
 				
-                dist = Math.abs(E3.Z * E3.Z);
+                dist = E3.Z * E3.Z;
 				
-                hitPt.X = ptA.X + (E.X * x);
-                hitPt.Y = ptA.Y + (E.Y * x);
+				//dist = dist < 0 ? -dist : dist;
+				
+                hitPt.X = ptAX + (E.X * x);
+                hitPt.Y = ptAY + (E.Y * x);
                 edgeD[0] = x / edgeLength;
-                normal.setToVec(n);
+				
+                // normal.setToVec(n);
+				normal.X = n.X;
+				normal.Y = n.Y;
             }
+			
+			//trace(dist);
 			
             return dist;
         }
@@ -793,9 +1086,16 @@ package JelloAS3
             var closestSQD:Number = 100000.0;
             var closest:int = -1;
 
-            for (var i:int = 0; i < mPointMasses.length; i++)
+            var points_count:int = mPointMasses.length;
+            for (var i:int = 0; i < points_count; i++)
             {
-                var thisD:Number = (pos.minus(mPointMasses[i].Position)).length();
+				var p:PointMass = mPointMasses[i];
+				
+                // var thisD:Number = (pos.minus(mPointMasses[i].Position)).length();
+				var dx:Number = pos.X - p.PositionX;
+				var dy:Number = pos.Y - p.PositionY;
+				
+				var thisD:Number = dx * dx + dy * dy;
 				
                 if (thisD < closestSQD)
                 {
@@ -832,21 +1132,34 @@ package JelloAS3
         /// </summary>
         /// <param name="pt">location of force, in global space</param>
         /// <param name="force">direction and intensity of force, in global space</param>
+		private static var tempR:Vector2 = new Vector2();
+		private static var tempV1:Vector3 = new Vector3();
+		private static var tempV2:Vector3 = new Vector3();
         public function addGlobalForce(pt:Vector2, force:Vector2) : void
         {
-            var R:Vector2 = (mDerivedPos.minus(pt));
+			tempR = (mDerivedPos.minus(pt));
             
-            var torqueF:Number = Vector3.Cross2(VectorTools.vec3FromVec2(R), VectorTools.vec3FromVec2(force)).Z;
+			tempV1.fromVector2(tempR);
+			tempV2.fromVector2(force);
+			var torqueF:Number = Vector3.Cross2Z(tempV1, tempV2);
 			
             for (var i:int = 0; i < mPointMasses.length; i++)
             {
-                var toPt:Vector2 = (mPointMasses[i].Position.minus(mDerivedPos));
+                // var toPt:Vector2 = (mPointMasses[i].Position.clone().minus(mDerivedPos));
 				
-                var torque:Vector2 = VectorTools.rotateVector(toPt, -(Math.PI) / 2.0);
+				var m:PointMass = mPointMasses[i];
 				
-                mPointMasses[i].Force.plusEquals(torque.mult(torqueF));
+				var toPt:Vector2 = new Vector2(m.PositionX - mDerivedPos.X, m.PositionY - mDerivedPos.Y);
 				
-                mPointMasses[i].Force.plusEquals(force);
+                var torque:Vector2 = VectorTools.rotateVector(toPt, -(Math.PI) * 0.5);
+				
+                m.ForceX += torque.X * torqueF;//.plusEquals(torque.mult(torqueF));
+				m.ForceY += torque.Y * torqueF;
+				
+                // mPointMasses[i].Force(force);
+				
+				m.ForceX += force;
+				m.ForceY += force;
             }
         }
         
@@ -860,107 +1173,56 @@ package JelloAS3
         /// <param name="effect">effect to use (MUST implement VertexColors)</param>
         public function debugDrawMe(g:Graphics) : void
         {
-			
-			
-            /*if (mVertexDecl == null)
-            {
-                mVertexDecl = new VertexDeclaration(device, VertexPositionColor.VertexElements);
-            }
-            ////////////////////////////////////////////////////////////////////////////
-            // fill the debug verts with derived positions.
-            mBaseShape.transformVertices(ref mDerivedPos, mDerivedAngle, ref mScale, ref mGlobalShape);
-			
-            VertexPositionColor[] debugVerts = new VertexPositionColor[mGlobalShape.Length + 1];
-            for (var i:int = 0; i < mGlobalShape.Length; i++)
-            {
-                debugVerts[i].Position = VectorTools.vec3FromVec2(mGlobalShape[i]);
-                debugVerts[i].Color = Color.Gray;
-            }
-			
-            debugVerts[debugVerts.Length - 1].Position = VectorTools.vec3FromVec2(mGlobalShape[0]);
-            debugVerts[debugVerts.Length - 1].Color = Color.Gray;
-			
-            device.VertexDeclaration = mVertexDecl;
-            device.RenderState.PointSize = 5.0f;
-			
-            effect.Begin();
-            foreach (EffectPass pass in effect.CurrentTechnique.Passes)
-            {
-                pass.Begin();
-                device.DrawUserPrimitives<VertexPositionColor>(PrimitiveType.LineStrip, debugVerts, 0, mGlobalShape.Length);
-                device.DrawUserPrimitives<VertexPositionColor>(PrimitiveType.PointList, debugVerts, 0, mGlobalShape.Length);
-                pass.End();
-            }
-            effect.End();
-			
-            ////////////////////////////////////////////////////////////////////////////
-            // fill the debug verts with global positions.
-            for (var i:int = 0; i < mPointMasses.length; i++)
-            {
-                debugVerts[i].Position = VectorTools.vec3FromVec2(mPointMasses[i].Position);
-                debugVerts[i].Color = Color.White;
-            }
-			
-            debugVerts[debugVerts.Length - 1].Position = VectorTools.vec3FromVec2(mPointMasses[0].Position);
-            debugVerts[debugVerts.Length - 1].Color = Color.White;
-			
-            effect.Begin();
-            foreach (EffectPass pass in effect.CurrentTechnique.Passes)
-            {
-                pass.Begin();
-                device.DrawUserPrimitives<VertexPositionColor>(PrimitiveType.LineStrip, debugVerts, 0, mPointMasses.length);
-                device.DrawUserPrimitives<VertexPositionColor>(PrimitiveType.PointList, debugVerts, 0, mPointMasses.length);
-				
-                // derived center.
-                VertexPositionColor[] center = new VertexPositionColor[1];
-                center[0].Position = VectorTools.vec3FromVec2(mDerivedPos);
-                center[0].Color = Color.IndianRed;
-                device.DrawUserPrimitives<VertexPositionColor>(PrimitiveType.PointList, center, 0, 1);
-				
-				// UP and LEFT vectors.
-                VertexPositionColor[] axis = new VertexPositionColor[4];
-                axis[0].Position = VectorTools.vec3FromVec2(mDerivedPos);
-                axis[0].Color = Color.OrangeRed;
-                axis[1].Position = VectorTools.vec3FromVec2(mDerivedPos + (VectorTools.rotateVector(Vector2.UnitY, mDerivedAngle)));
-                axis[1].Color = Color.OrangeRed;
-				
-                axis[2].Position = VectorTools.vec3FromVec2(mDerivedPos);
-                axis[2].Color = Color.YellowGreen;
-                axis[3].Position = VectorTools.vec3FromVec2(mDerivedPos + (VectorTools.rotateVector(Vector2.UnitX, mDerivedAngle)));
-                axis[3].Color = Color.YellowGreen;
-				
-                device.DrawUserPrimitives<VertexPositionColor>(PrimitiveType.LineList, axis, 0, 2);
-                pass.End();
-            }
-            effect.End();*/
-			
-			mBaseShape.transformVertices(mDerivedPos, mDerivedAngle, mScale, mGlobalShape);
+			// Temp vars
+			var gs_count = mGlobalShape.length;
+			var pm_count = mPointMasses.length;
 			
 			var s:Vector2 = RenderingSettings.Scale;
 			var p:Vector2 = RenderingSettings.Offset;
 			
+			mBaseShape.transformVertices(mDerivedPos, mDerivedAngle, mScale, mGlobalShape);
+			
+			for (i = 0; i < gs_count; i++)
+			{
+				mGlobalShape[i].X = mGlobalShape[i].X * s.X + p.X;
+				mGlobalShape[i].Y = mGlobalShape[i].Y * s.Y + p.Y;
+			}
+			
 			// Draw body original shape
 			
 			g.lineStyle(0, 0x808080);
-			g.moveTo(mGlobalShape[0].X * s.X + p.X, mGlobalShape[0].Y * s.Y + p.Y);
+			g.moveTo(mGlobalShape[0].X, mGlobalShape[0].Y);
 			
-            for (var i:int = 0; i < mGlobalShape.length; i++)
+            for (var i:int = 0; i < gs_count; i++)
             {
-				g.lineTo(mGlobalShape[i].X * s.X + p.X, mGlobalShape[i].Y * s.Y + p.Y);
+				g.lineTo(mGlobalShape[i].X, mGlobalShape[i].Y);
             }
-			g.lineTo(mGlobalShape[0].X * s.X + p.X, mGlobalShape[0].Y * s.Y + p.Y);
+			
+			g.lineTo(mGlobalShape[0].X, mGlobalShape[0].Y);
 			
 			
 			// Draw body outline
 			
 			g.lineStyle(0, 0xFFFFFF);
-			g.moveTo(mPointMasses[0].Position.X * s.X + p.X, mPointMasses[0].Position.Y * s.Y + p.Y);
+			g.moveTo(mPointMasses[0].PositionX * s.X + p.X, mPointMasses[0].PositionY * s.Y + p.Y);
 			
-			for (i = 0; i < mPointMasses.length; i++)
+			for (i = 0; i < pm_count; i++)
             {
-				g.lineTo(mPointMasses[i].Position.X * s.X + p.X, mPointMasses[i].Position.Y * s.Y + p.Y);
+				g.lineTo(mPointMasses[i].PositionX * s.X + p.X, mPointMasses[i].PositionY * s.Y + p.Y);
             }
-			g.lineTo(mPointMasses[0].Position.X * s.X + p.X, mPointMasses[0].Position.Y * s.Y + p.Y);
+			g.lineTo(mPointMasses[0].PositionX * s.X + p.X, mPointMasses[0].PositionY * s.Y + p.Y);
+			
+			for (i = 0; i < pm_count; i++)
+            {
+				g.lineStyle(0, 0, 0);
+				
+				g.beginFill(0xFFFFFF);
+				
+				g.drawRect(mPointMasses[i].PositionX * s.X + p.X - RenderingSettings.PointSize, mPointMasses[i].PositionY * s.Y + p.Y - RenderingSettings.PointSize,
+						   RenderingSettings.PointSize * 2, RenderingSettings.PointSize * 2);
+				
+				g.endFill();
+			}
 			
 			
 			// UP and LEFT vectors.

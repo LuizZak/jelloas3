@@ -46,7 +46,7 @@ package JelloAS3
         public function ClosedShape(verts:Vector.<Vector2> = null) : void
         {
             mLocalVertices = new Vector.<Vector2>();
-            finish();
+            finish(true);
         }
 		
         // SETUP - ADDING VERTS
@@ -61,10 +61,15 @@ package JelloAS3
         // add a vertex to this collision.
         public function addVertex(vert:Vector2) : Number
         {
-            mLocalVertices.push(vert);
+            mLocalVertices.push(vert.clone());
 			
             return mLocalVertices.length;
         }
+		
+		public function addVertexPos(x:Number, y:Number) : Number
+		{
+			return addVertex(new Vector2(x, y));
+		}
 		
         ////////////////////////////////////////////////////////////////
         // finish adding vertices to this collision, and convert them into local space (be default).
@@ -134,6 +139,17 @@ package JelloAS3
             return ret;
         }*/
 		
+		// Transforms all vertices by the given angle and scale
+		public function transformOwn(angleInRadians:Number, localScale:Vector2) : void
+		{
+			for (var i:int = 0; i < mLocalVertices.length; i++)
+            {
+				mLocalVertices[i].multEqualsVec(localScale);
+				
+				mLocalVertices[i] = VectorTools.rotateVector(mLocalVertices[i], angleInRadians);
+			}
+		}
+		
         /// <summary>
         /// Get a new list of vertices, transformed by the given position, angle, and scale.
         /// transformation is applied in the following order:  scale -> rotation -> position.
@@ -142,26 +158,33 @@ package JelloAS3
         /// <param name="angleInRadians">rotation (in radians)</param>
         /// <param name="localScale">scale</param>
         /// <param name="outList">new list of transformed points.</param>
-        public function transformVertices(worldPos:Vector2, angleInRadians:Number, localScale:Vector2, outList:Array) : void
+        public function transformVertices(worldPos:Vector2, angleInRadians:Number, localScale:Vector2, outList:Vector.<Vector2>) : void
         {
-			outList.length = 0;
+			outList.length = mLocalVertices.length;
 			
             for (var i:int = 0; i < mLocalVertices.length; i++)
             {
                 // rotate the point, and then translate.
                 var v:Vector2 = new Vector2();
 				
-                v.X = mLocalVertices[i].X * localScale.X;
-                v.Y = mLocalVertices[i].Y * localScale.Y;
+				v.X = mLocalVertices[i].X;
+                v.Y = mLocalVertices[i].Y;
+				
+				if(localScale != null) {
+	                v.X *= localScale.X;
+                	v.Y *= localScale.Y;
+				}
 				
                 v = VectorTools.rotateVector(v, angleInRadians);
 				
-                v.X += worldPos.X;
-                v.Y += worldPos.Y;
+				if(worldPos != null) {
+                	v.X += worldPos.X;
+                	v.Y += worldPos.Y;
+				}
 				
                 //outList[i] = JelloPhysics.VectorTools.rotateVector(mLocalVertices[i] * localScale, angleInRadians);
 				
-				outList.push(new Vector2(v.X, v.Y));
+				outList[i] = new Vector2(v.X, v.Y);
             }
         }
     }

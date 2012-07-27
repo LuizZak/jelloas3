@@ -1,4 +1,4 @@
-/*
+﻿/*
 Copyright (c) 2007 Walaber
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -34,12 +34,12 @@ package JelloAS3
         /// <summary>
         /// Minimum point of this bounding box.
         /// </summary>
-        public var Min:Vector2;
+        public var Min:Vector2 = new Vector2();
 		
         /// <summary>
         /// Maximum point of this bounding box.
         /// </summary>
-        public var Max:Vector2;
+        public var Max:Vector2 = new Vector2();
 		
         /// <summary>
         /// Property that indicated whether or not this bounding box is valid.
@@ -63,8 +63,14 @@ package JelloAS3
         /// <param name="maxPt">max point</param>
         public function AABB(minPt:Vector2 = null, maxPt:Vector2 = null)
         {
-            Min = (minPt == null ? Vector2.Zero.clone() : minPt);
-            Max = (maxPt == null ? Vector2.Zero.clone() : maxPt);
+			if(minPt == null)
+				Min.setTo(0, 0);
+			else
+				Min.setToVec(minPt);
+			if(maxPt == null)
+				Max.setTo(0, 0);
+			else
+				Max.setToVec(maxPt);
 			
             Validity = (minPt == null || maxPt == null ? PointValidity[0] : PointValidity[1]);
         }
@@ -78,7 +84,7 @@ package JelloAS3
             Max.X = Max.Y = 0;
 			Min.X = Min.Y = 0;
 			
-            Validity = PointValidity.Invalid;
+            Validity = PointValidity[0];
         }
 		
         // EXPANSION
@@ -94,15 +100,41 @@ package JelloAS3
             }
             else
             {
-                Min = pt.clone();
-				Max = pt.clone();
+                Min.setToVec(pt);
+				Max.setToVec(pt);
+				
+                Validity = PointValidity[1];
+            }
+        }
+		
+		 public function expandToIncludePos(ptX:Number, ptY:Number) : void
+        {
+            if (Validity == PointValidity[1])
+            {
+                if (ptX < Min.X) { Min.X = ptX; }
+                else if (ptX > Max.X) { Max.X = ptX;}
+				
+                if (ptY < Min.Y) { Min.Y = ptY; }
+                else if (ptY > Max.Y) { Max.Y = ptY;}
+            }
+            else
+            {
+                Min.setTo(ptX, ptY);
+				Max.setTo(ptX, ptY);
 				
                 Validity = PointValidity[1];
             }
         }
 		
         // COLLISION / OVERLAP
-        public function contains(pt:Vector2) : Boolean
+        public function contains(ptX:Number, ptY:Number) : Boolean
+        {
+            if (Validity == PointValidity[0]) { return false; }
+		
+            return ((ptX >= Min.X) && (ptX <= Max.X) && (ptY >= Min.Y) && (ptY <= Max.Y));
+        }
+		
+		public function containsVec(pt:Vector2) : Boolean
         {
             if (Validity == PointValidity[0]) { return false; }
 		
@@ -112,10 +144,17 @@ package JelloAS3
         public function intersects(box:AABB) : Boolean
         {
             // X overlap check.
-            var overlapX:Boolean = ((Min.X <= box.Max.X) && (Max.X >= box.Min.X));
-            var overlapY:Boolean = ((Min.Y <= box.Max.Y) && (Max.Y >= box.Min.Y));
+			if((Min.X <= box.Max.X) && (Max.X >= box.Min.X))
+			{
+				// Y overlap check
+            	if((Min.Y <= box.Max.Y) && (Max.Y >= box.Min.Y))
+				{
+					return true;
+				}
+			}
 		
-            return (overlapX && overlapY);
+            //return (overlapX && overlapY);
+			return false;
         }
 		
 		public function toString() : String

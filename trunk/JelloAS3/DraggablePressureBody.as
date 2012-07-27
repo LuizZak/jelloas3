@@ -20,7 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package JelloAS3 {
+package JelloAS3
+{
 	import flash.display.Graphics;
 	
 	public class DraggablePressureBody extends PressureBody
@@ -32,13 +33,12 @@ package JelloAS3 {
 
         /*VertexDeclaration mDecl;
         VertexPositionColor[] mVerts = null;*/
-        var mIndices:Array = null;
+        var mIndices:Vector.<int>;
         var mIndexList:Vector.<int>;
         var mColor:int = 0xFFFFFF;
         var mDistressColor:int = 0xFF0000;
 
-        public function DraggablePressureBody(w:World, s:ClosedShape, massPerPoint:Number, gasPressure:Number, shapeSpringK:Number, shapeSpringDamp:Number,
-											  edgeSpringK:Number, edgeSpringDamp:Number, pos:Vector2, angleInRadians:Number, scale:Vector2) : void 
+        public function DraggablePressureBody(w:World, s:ClosedShape, massPerPoint:Number, gasPressure:Number, shapeSpringK:Number, shapeSpringDamp:Number, edgeSpringK:Number, edgeSpringDamp:Number, pos:Vector2, angleInRadians:Number, scale:Vector2) : void
         {
 			super(w, s, massPerPoint, gasPressure, shapeSpringK, shapeSpringDamp, edgeSpringK, edgeSpringDamp, pos, angleInRadians, scale, false);
 			
@@ -55,14 +55,16 @@ package JelloAS3 {
 		
 		public function finalizeTriangles(c:uint, d:uint) : void
         {
-            /*mVerts = new VertexPositionColor[mPointMasses.Count];
+            // mVerts = new VertexPositionColor[mPointMasses.Count];
 
-            mIndices = new int[mIndexList.Count];
-            for (int i = 0; i < mIndexList.Count; i++)
+            mIndices = new Vector.<int>();
+			mIndices.length = mIndexList.length;
+			
+            for (var i:int = 0; i < mIndexList.length; i++)
                 mIndices[i] = mIndexList[i];
 
             mColor = c;
-            mDistressColor = d;*/
+            mDistressColor = d;
         }
 
         public function setDragForce(force:Vector2, pm:int) : void
@@ -79,12 +81,15 @@ package JelloAS3 {
             // gravity.
             for (var i:int = 0; i < mPointMasses.length; i++)
             {
-                mPointMasses[i].Force.Y += -9.8 * mPointMasses[i].Mass;
+                mPointMasses[i].ForceY += -9.8 * mPointMasses[i].Mass;
             }
 
             // dragging force.
             if (dragPoint != -1)
-                mPointMasses[dragPoint].Force.plusEquals(dragForce);
+			{
+                mPointMasses[dragPoint].ForceX += dragForce.X;
+				mPointMasses[dragPoint].ForceY += dragForce.Y;
+			}
 
             dragPoint = -1;
         }
@@ -92,33 +97,26 @@ package JelloAS3 {
 
         public function drawMe(g:Graphics) : void
         {
-            /*if (mDecl == null)
+			//super.debugDrawMe(g);
+			var pm_count = mPointMasses.length;
+			
+			var s:Vector2 = RenderingSettings.Scale;
+			var p:Vector2 = RenderingSettings.Offset;
+			
+			g.beginFill(mColor);
+			
+			for (var i:int = 0; i < pm_count; i += 1)
             {
-                mDecl = new VertexDeclaration(device, VertexPositionColor.VertexElements);
+				var posX:Number = mPointMasses[i].PositionX * s.X + p.X;
+				var posY:Number = mPointMasses[i].PositionY * s.Y + p.Y;
+				
+				if(i == 0)
+					g.moveTo(posX, posY);
+				
+				g.lineTo(posX, posY);
             }
-
-            // update vert buffer.
-            for (int i = 0; i < mPointMasses.Count; i++)
-            {
-                mVerts[i].Position = JelloPhysics.VectorTools.vec3FromVec2(mPointMasses[i].Position);
-
-                float dist = (mPointMasses[i].Position - mGlobalShape[i]).Length() * 2.0f;
-                if (dist > 1f) { dist = 1f; }
-                
-                mVerts[i].Color = new Color(Vector3.Lerp(mColor.ToVector3(), mDistressColor.ToVector3(),dist));
-            }
-
-            device.VertexDeclaration = mDecl;
-
-            // draw me!
-            effect.Begin();
-            foreach (EffectPass pass in effect.CurrentTechnique.Passes)
-            {
-                pass.Begin();
-                device.DrawUserIndexedPrimitives<VertexPositionColor>(PrimitiveType.TriangleList, mVerts, 0, mVerts.Length, mIndices, 0, mIndices.Length / 3);
-                pass.End();
-            }
-            effect.End();*/
+			
+			g.endFill();
         }
     }
 }

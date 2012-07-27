@@ -60,5 +60,18 @@ package JelloAS3
 			
 			return vector;
 		}
+		
+		public static function Cross2Z(vector1:Vector3, vector2:Vector3) : Number
+		{
+			var z:Number = (vector1.X * vector2.Y) - (vector1.Y * vector2.X);
+			return z;
+		}
+		
+		public function fromVector2(v:Vector2, z:Number = 0) : void
+		{
+			X = v.X;
+			Y = v.Y;
+			Z = z;
+		}
 	}
 }
