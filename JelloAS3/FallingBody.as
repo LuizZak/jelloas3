@@ -45,7 +45,11 @@ package JelloAS3 {
 			
             // gravity!
             for (var i:int = 0; i < mPointMasses.length; i++)
-                mPointMasses[i].Force.plusEquals(new Vector2(0, -1.8 * mPointMasses[i].Mass));
+			{
+				trace(mPointMasses[i].ForceY);
+				
+                mPointMasses[i].ForceY += -9.8 * mPointMasses[i].Mass;
+			}
         }
 	}
 }

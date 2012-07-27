@@ -97,48 +97,54 @@ package JelloAS3
             // body, and 1 to apply forces.  we will need the normals for the edges in both loops, so we will cache them and remember them.
             mVolume = 0;
 			
+			var edge1NX:Number, edge1NY:Number, edge2NX:Number, edge2NY:Number, t:Number;
+			var normX:Number, normY:Number;
+			
             for (var i:Number = 0; i < mPointMasses.length; i++)
             {
                 var prev:Number = (i > 0) ? i - 1 : mPointMasses.length - 1;
-                var next:Number = (i < mPointMasses.length - 1) ? i + 1 : 0;
+                var next:Number = (i + 1) % (mPointMasses.length);
 				
                 // currently we are talking about the edge from i --> j.
                 // first calculate the volume of the body, and cache normals as we go.
-                var edge1N:Vector2 = new Vector2();
+                edge1NX = mPointMasses[i].PositionX - mPointMasses[prev].PositionX;
+                edge1NY = mPointMasses[i].PositionY - mPointMasses[prev].PositionY;
 				
-                edge1N.X = mPointMasses[i].Position.X - mPointMasses[prev].Position.X;
-                edge1N.Y = mPointMasses[i].Position.Y - mPointMasses[prev].Position.Y;
+				t = edge1NX;
 				
-                VectorTools.makePerpendicular(edge1N);
-				
-                var edge2N:Vector2 = new Vector2();
+				edge1NX = -edge1NY;
+				edge1NY = t;
                 
-				edge2N.X = mPointMasses[next].Position.X - mPointMasses[i].Position.X;
-                edge2N.Y = mPointMasses[next].Position.Y - mPointMasses[i].Position.Y;
 				
-                VectorTools.makePerpendicular(edge2N);
+				edge2NX = mPointMasses[next].PositionX - mPointMasses[i].PositionX;
+                edge2NY = mPointMasses[next].PositionY - mPointMasses[i].PositionY;
 				
-                var norm:Vector2 = new Vector2();
-                norm.X = edge1N.X + edge2N.X;
-                norm.Y = edge1N.Y + edge2N.Y;
+				t = edge2NX;
 				
-                var nL:Number = Math.sqrt((norm.X * norm.X) + (norm.Y * norm.Y));
+				edge2NX = -edge2NY;
+				edge2NY = t;
+				
+				
+                normX = edge1NX + edge2NX;
+                normY = edge1NY + edge2NY;
+				
+                var nL:Number = (normX * normX) + (normY * normY);
 				
                 if (nL > 0.001)
                 {
-                    norm.X /= nL;
-                    norm.Y /= nL;
+                    normX /= nL;
+                    normY /= nL;
                 }
 				
-                var edgeL:Number = Math.sqrt((edge2N.X * edge2N.X) + (edge2N.Y * edge2N.Y));
+                var edgeL:Number = Math.sqrt((edge2NX * edge2NX) + (edge2NY * edge2NY));
 				
                 // cache normal and edge length
-                mNormalList[i] = norm;
+                mNormalList[i] = new Vector2(normX, normY);
                 mEdgeLengthList[i] = edgeL;
 				
-                var xdist:Number = Math.abs(mPointMasses[i].Position.X - mPointMasses[next].Position.X);
+                var xdist:Number = Math.abs(mPointMasses[i].PositionX - mPointMasses[next].PositionX);
 				
-                var volumeProduct:Number = xdist * (norm.X < 0 ? -norm.X : norm.X) * edgeL;
+                var volumeProduct:Number = xdist * (normX < 0 ? -normX : normX) * edgeL;
 				
                 // add to volume
                 mVolume += 0.5 * volumeProduct;
@@ -153,11 +159,11 @@ package JelloAS3
 				
                 var pressureV:Number = (invVolume * mEdgeLengthList[i] * mGasAmount);
 				
-                mPointMasses[i].Force.X += mNormalList[i].X * pressureV;
-                mPointMasses[i].Force.Y += mNormalList[i].Y * pressureV;
+                mPointMasses[i].ForceX += mNormalList[i].X * pressureV;
+                mPointMasses[i].ForceY += mNormalList[i].Y * pressureV;
 				
-                mPointMasses[j].Force.X += mNormalList[j].X * pressureV;
-                mPointMasses[j].Force.Y += mNormalList[j].Y * pressureV;
+                mPointMasses[j].ForceX += mNormalList[j].X * pressureV;
+                mPointMasses[j].ForceY += mNormalList[j].Y * pressureV;
             }
         }
 		
@@ -179,10 +185,16 @@ package JelloAS3
 				
                 // currently we are talking about the edge from i --> j.
                 // first calculate the volume of the body, and cache normals as we go.
-                var edge1N:Vector2 = mPointMasses[i].Position.minus(mPointMasses[prev].Position).perpendicular().clone();
+                // var edge1N:Vector2 = mPointMasses[i].Position.minus(mPointMasses[prev].Position).perpendicular().clone();
+				var edge1N:Vector2 = new Vector2(mPointMasses[i].PositionX - mPointMasses[prev].PositionX,
+												 mPointMasses[i].PositionY - mPointMasses[prev].PositionY).perpendicular();
+				
                 edge1N.normalizeThis();
 				
-                var edge2N:Vector2 = mPointMasses[next].Position.minus(mPointMasses[i].Position).perpendicular().clone();
+                // var edge2N:Vector2 = mPointMasses[next].Position.minus(mPointMasses[i].Position).perpendicular().clone();
+				var edge2N:Vector2 = new Vector2(mPointMasses[next].PositionX - mPointMasses[i].PositionX,
+												 mPointMasses[next].PositionY - mPointMasses[i].PositionY).perpendicular();
+				
                 edge2N.normalizeThis();
 				
                 var norm:Vector2 = edge1N.plus(edge2N);
@@ -195,10 +207,10 @@ package JelloAS3
 					g.moveTo(mPointMasses[i].Position.X, mPointMasses[i].Position.Y);
 				} else {*/
 					g.lineStyle(1, 0xFFFF00);
-					g.moveTo(mPointMasses[i].Position.X * s.X + p.X, mPointMasses[i].Position.Y * s.Y + p.Y);
+					g.moveTo(mPointMasses[i].PositionX * s.X + p.X, mPointMasses[i].PositionY * s.Y + p.Y);
 					
 					g.lineStyle(1, 0xF0FFF0);
-					g.lineTo((mPointMasses[i].Position.X + norm.X) * s.X + p.X, (mPointMasses[i].Position.Y + norm.Y) * s.Y + p.Y);
+					g.lineTo((mPointMasses[i].PositionX + norm.X) * s.X + p.X, (mPointMasses[i].PositionY + norm.Y) * s.Y + p.Y);
 				//}
 				
                 /*normals[(i * 2) + 0].Position = VectorTools.vec3FromVec2(mPointMasses[i].Position);

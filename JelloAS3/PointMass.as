@@ -38,17 +38,26 @@ package JelloAS3
         /// <summary>
         /// Global position of the PointMass.
         /// </summary>
-        public var Position:Vector2;
+        // public var Position:Vector2;
+		
+		public var PositionX:Number;
+		public var PositionY:Number;
 
         /// <summary>
         /// Global velocity of the PointMass.
         /// </summary>
-        public var Velocity:Vector2;
+        // public var Velocity:Vector2;
+		
+		public var VelocityX:Number = 0;
+		public var VelocityY:Number = 0;
 
         /// <summary>
         /// Force accumulation variable.  reset to Zero after each call to integrate().
         /// </summary>
-        public var Force:Vector2;
+        // public var Force:Vector2;
+		
+		public var ForceX:Number = 0;
+		public var ForceY:Number = 0;
 
         // CONSTRUCTORS
         ////////////////////////////////////////////////////////////////
@@ -63,11 +72,14 @@ package JelloAS3
         {
             Mass = mass;
             
-			Position = (pos == null ? Vector2.Zero.clone() : pos);
-            
-			Velocity = Vector2.Zero.clone();
+			// Position = (pos == null ? Vector2.Zero.clone() : pos.clone());
 			
-			Force = Vector2.Zero.clone();
+			PositionX = pos.X;
+			PositionY = pos.Y;
+            
+			// Velocity = Vector2.Zero.clone();
+			
+			// Force = Vector2.Zero.clone();
         }
 
         // INTEGRATION
@@ -83,15 +95,20 @@ package JelloAS3
             {
                 var elapMass:Number = elapsed / Mass;
 				
-                Velocity.X += (Force.X * elapMass);
-                Velocity.Y += (Force.Y * elapMass);
+                VelocityX += (ForceX * elapMass);
+                VelocityY += (ForceY * elapMass);
 
-                Position.X += (Velocity.X * elapsed);
-                Position.Y += (Velocity.Y * elapsed);
+                PositionX += (VelocityX * elapsed);
+                PositionY += (VelocityY * elapsed);
             }
 
-            Force.X = 0.0;
-            Force.Y = 0.0;
+            ForceX = 
+            ForceY = 0.0;
         }
+		
+		public function VecPos() : Vector2
+		{
+			return new Vector2(PositionX, PositionY);
+		}
     }
 }

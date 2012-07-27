@@ -31,17 +31,17 @@ package JelloAS3
 	{
 		public function Clear() : void
 		{
-			bodyA = bodyB = null; bodyApm = bodyBpmA = bodyBpmB = -1; hitPt = Vector2.Zero.clone(); edgeD = 0; normal = Vector2.Zero.clone(); penetration = 0;
+			bodyA = bodyB = null; bodyApm = bodyBpmA = bodyBpmB = -1; hitPt.setTo(0, 0); edgeD = 0; normal.setTo(0, 0); penetration = 0;
 		}
 		
-		public var bodyA :Body;
+		public var bodyA : Body;
 		public var bodyApm : int;
 		public var bodyB : Body;
 		public var bodyBpmA : int;
 		public var bodyBpmB : int;
-		public var hitPt : Vector2;
+		public var hitPt : Vector2 = new Vector2();
 		public var edgeD : Number;
-		public var normal : Vector2;
+		public var normal : Vector2 = new Vector2();
 		public var penetration : Number;
 		
 		public function clone() : BodyCollisionInfo
@@ -59,6 +59,11 @@ package JelloAS3
 			r.penetration = this.penetration;
 			
 			return r;
+		}
+		
+		public function toString() : String
+		{
+			return /*bodyA + ":" + bodyB + ":" + */hitPt + ":" + edgeD + ":" + normal + ":" + penetration;
 		}
 	}
 }

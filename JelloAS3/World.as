@@ -25,6 +25,7 @@ package JelloAS3
 {
 	import flash.display.Graphics;
 	import JelloAS3.*;
+	import flash.utils.getTimer;
 	
 	/**
 	 * ...
@@ -72,7 +73,7 @@ package JelloAS3
         private var mMaterialCount:int;
 
         private var mCollisionList:Vector.<BodyCollisionInfo>;
-
+		
         //// debug visualization variables
         // var mVertexDecl:VertexDeclaration = null;
 
@@ -94,11 +95,11 @@ package JelloAS3
 			
 			mDefaultMatPair = new MaterialPair();
             mDefaultMatPair.Friction = 0.3;
-            mDefaultMatPair.Elasticity = 0.8;
+            mDefaultMatPair.Elasticity = 0.2;
             mDefaultMatPair.Collide = true;
             mDefaultMatPair.CollisionFilter = this.defaultCollisionFilter;
             
-            mMaterialPairs[0][0] = mDefaultMatPair;
+            mMaterialPairs[0][0] = mDefaultMatPair.clone();
 
             var min:Vector2 = new Vector2(-20.0, -20.0);
             var max:Vector2 = new Vector2(20.0, 20.0);
@@ -128,7 +129,7 @@ package JelloAS3
         /// <returns>int ID of the newly created material</returns>
         public function addMaterial() : int
         {
-            var old:Array = mMaterialPairs;
+            var old:Array = mMaterialPairs.slice();
             mMaterialCount++;
 			
             mMaterialPairs = new Array();
@@ -145,7 +146,7 @@ package JelloAS3
                     if ((i < (mMaterialCount-1)) && (j < (mMaterialCount-1)))
                         mMaterialPairs[i][j] = old[i][j];
                     else
-                        mMaterialPairs[i][j] = mDefaultMatPair;
+                        mMaterialPairs[i][j] = mDefaultMatPair.clone();
                 }
             }
 			
@@ -279,7 +280,7 @@ package JelloAS3
         {
             for (var i:int = 0; i < mBodies.length; i++)
             {
-                if (mBodies[i].contains(pt))
+                if (mBodies[i].containsVec(pt))
                     return mBodies[i];
             }
 			
@@ -296,57 +297,73 @@ package JelloAS3
         {
             mPenetrationCount = 0;
 			
+			var body_count:int = mBodies.length;
+			var body1:Body;
+			
             // first, accumulate all forces acting on PointMasses.
-            for (var i:int = 0; i < mBodies.length; i++)
+            /*for (var i:int = 0; i < mBodies.length; i++)
             {
-                mBodies[i].derivePositionAndAngle(elapsed);
-                mBodies[i].accumulateExternalForces();
-                mBodies[i].accumulateInternalForces();
-            }
+				body1 = mBodies[i];
+				
+                body1.derivePositionAndAngle(elapsed);
+                body1.accumulateExternalForces();
+                body1.accumulateInternalForces();
+            }*/
 			
             // now integrate.
-            for (i = 0; i < mBodies.length; i++)
-                mBodies[i].integrate(elapsed);
+            // for (i = 0; i < mBodies.length; i++)
+                // mBodies[i].integrate(elapsed);
 			
             // update all bounding boxes, and then bitmasks.
-            for (i = 0; i < mBodies.length; i++)
+            for (var i:int = 0; i < body_count; i++)
             {
-                mBodies[i].updateAABB(elapsed, false);
-                updateBodyBitmask(mBodies[i]);
+				// Everything's in one single loop, now:
+				
+				body1 = mBodies[i];
+				
+				body1.derivePositionAndAngle(elapsed);
+                body1.accumulateExternalForces();
+                body1.accumulateInternalForces();
+				
+				body1.integrate(elapsed);
+				
+				body1.updateAABB(elapsed, false);
+				updateBodyBitmask(body1);
             }
 			
             // now check for collision.
             // inter-body collision!
-            for (i = 0; i < mBodies.length; i++)
+            for (i = 0; i < body_count; i++)
             {
-                for (var j:int = i + 1; j < mBodies.length; j++)
+				body1 = mBodies[i];
+				
+                for (var j:int = i + 1; j < body_count; j++)
                 {
+					var body2:Body = mBodies[j];
+					
+					// another early-out - both bodies are static.
+                    if ((body1.IsStatic) && (body2.IsStatic))
+                        continue;
+					
+					// grid-based early out.
+                    if (((body1.mBitMaskX.mask & body2.mBitMaskX.mask) == 0) && 
+                        ((body1.mBitMaskY.mask & body2.mBitMaskY.mask) == 0))
+                        continue;
+					
                     // early out - these bodies materials are set NOT to collide
-                    if (!mMaterialPairs[mBodies[i].Material][mBodies[j].Material].Collide)
-                        continue;
-					
-                    // another early-out - both bodies are static.
-                    if ((mBodies[i].IsStatic) && (mBodies[j].IsStatic))
-                        continue;
-					
-                    // grid-based early out.
-                    if (((mBodies[i].mBitMaskX.mask & mBodies[j].mBitMaskX.mask) == 0) && 
-                        ((mBodies[i].mBitMaskY.mask & mBodies[j].mBitMaskY.mask) == 0))
+                    if (!mMaterialPairs[body1.Material][body2.Material].Collide)
                         continue;
 					
                     // broad-phase collision via AABB.
-                    var boxA:AABB = mBodies[i].getAABB();
-                    var boxB:AABB = mBodies[j].getAABB();
-					
                     // early out
-                    if (!boxA.intersects(boxB))
+					if(!body1.mAABB.intersects(body2.mAABB))
                         continue;
 					
                     // okay, the AABB's of these 2 are intersecting.  now check for collision of A against B.
-                    bodyCollide(mBodies[i], mBodies[j], mCollisionList);
+                    bodyCollide(body1, body2, mCollisionList);
 					
                     // and the opposite case, B colliding with A
-                    bodyCollide(mBodies[j], mBodies[i], mCollisionList);
+                    bodyCollide(body2, body1, mCollisionList);
                 }
             }
 			
@@ -354,22 +371,25 @@ package JelloAS3
             _handleCollisions();
 
             // now dampen velocities.
-            for (i = 0; i < mBodies.length; i++)
+            for (i = 0; i < body_count; i++)
                 mBodies[i].dampenVelocity();
         }
 
         private function updateBodyBitmask(body:Body) : void
         {
-            var box:AABB = body.getAABB();
+            var box:AABB = body.mAABB;
 			
-            var minX:int = ((box.Min.X - mWorldLimits.Min.X) / mWorldGridStep.X) << 0;
-            var maxX:int = ((box.Max.X - mWorldLimits.Min.X) / mWorldGridStep.X) << 0;
+			var rev_DividerX:Number = 1.0 / mWorldGridStep.X;
+			var rev_DividerY:Number = 1.0 / mWorldGridStep.Y;
+			
+            var minX:int = ((box.Min.X - mWorldLimits.Min.X) * rev_DividerX) << 0;
+            var maxX:int = ((box.Max.X - mWorldLimits.Min.X) * rev_DividerX) << 0;
 			
             if (minX < 0) { minX = 0; } else if (minX > 32) { minX = 32; }
             if (maxX < 0) { maxX = 0; } else if (maxX > 32) { maxX = 32; }
 			
-            var minY:int = ((box.Min.Y - mWorldLimits.Min.Y) / mWorldGridStep.Y) << 0;
-            var maxY:int = ((box.Max.Y - mWorldLimits.Min.Y) / mWorldGridStep.Y) << 0;
+            var minY:int = ((box.Min.Y - mWorldLimits.Min.Y) * rev_DividerY) << 0;
+            var maxY:int = ((box.Max.Y - mWorldLimits.Min.Y) * rev_DividerY) << 0;
 			
             if (minY < 0) { minY = 0; } else if (minY > 32) { minY = 32; }
             if (maxY < 0) { maxY = 0; } else if (maxY > 32) { maxY = 32; }
@@ -387,12 +407,17 @@ package JelloAS3
             //Console.WriteLine("Body bitmask: minX{0} maxX{1} minY{2} maxY{3}", minX, maxX, minY, minY, maxY);
         }
         
+		private var fromPrev:Vector2 = new Vector2();
+		private var toNext:Vector2 = new Vector2();
+		private var ptNorm:Vector2 = new Vector2();
+		private var hitPt:Vector2 = new Vector2();
+		private var norm:Vector2 = new Vector2();
 		
         // COLLISION CHECKS / RESPONSE
         private function bodyCollide(bA:Body, bB:Body, infoList:Vector.<BodyCollisionInfo>) : void
         {
-            var bApCount:int = bA.PointMassCount;
-            var bBpCount:int = bB.PointMassCount;
+            var bApCount:int = bA.mPointMasses.length;
+            var bBpCount:int = bB.mPointMasses.length;
 			
             var boxB:AABB = bB.getAABB();
 			
@@ -402,41 +427,62 @@ package JelloAS3
 			
             for (var i:int = 0; i < bApCount; i++)
             {
-                var pt:Vector2 = bA.getPointMass(i).Position;
+                // var pt:Vector2 = bA.getPointMass(i).Position.clone();
+				
+				var ptX:Number = bA.mPointMasses[i].PositionX;
+				var ptY:Number = bA.mPointMasses[i].PositionY;
 				
                 // early out - if this point is outside the bounding box for bodyB, skip it!
-                if (!boxB.contains(pt))
+                if (!boxB.contains(ptX, ptY))
                     continue;
 					
                 // early out - if this point is not inside bodyB, skip it!
-                if (!bB.contains(pt))
+                if (!bB.contains(ptX, ptY))
                     continue;
 					
                 var prevPt:int = (i > 0) ? i - 1 : bApCount - 1;
                 var nextPt:int = (i < bApCount - 1) ? i + 1 : 0;
 				
-                var prev:Vector2 = bA.getPointMass(prevPt).Position;
-                var next:Vector2 = bA.getPointMass(nextPt).Position;
+                // var prev:Vector2 = bA.getPointMass(prevPt).Position.clone();
+				var prevX:Number = bA.mPointMasses[prevPt].PositionX;
+				var prevY:Number = bA.mPointMasses[prevPt].PositionY;
+				
+                // var next:Vector2 = bA.getPointMass(nextPt).Position.clone();
+				var nextX:Number = bA.mPointMasses[nextPt].PositionX;
+				var nextY:Number = bA.mPointMasses[nextPt].PositionY;
 				
                 // now get the normal for this point. (NOT A UNIT VECTOR)
-                var fromPrev:Vector2 = new Vector2();
-                fromPrev.X = pt.X - prev.X;
-                fromPrev.Y = pt.Y - prev.Y;
 				
-                var toNext:Vector2 = new Vector2();
-                toNext.X = next.X - pt.X;
-                toNext.Y = next.Y - pt.Y;
+                fromPrev.X = ptX - prevX;
+                fromPrev.Y = ptY - prevY;
 				
-                var ptNorm:Vector2 = new Vector2();
+                toNext.X = nextX - ptX;
+                toNext.Y = nextY - ptY;
+				
                 ptNorm.X = fromPrev.X + toNext.X;
                 ptNorm.Y = fromPrev.Y + toNext.Y;
 				
                 // VectorTools.makePerpendicular(ptNorm);
-				ptNorm.perpendicular();
+				ptNorm = ptNorm.perpendicular();
+				
+				// var fromPrev:Vector2 = new Vector2();
+                /*var fromPrevX:Number = ptX - prevX;
+                var fromPrevY:Number = ptY - prevY;
+				
+                // var toNext:Vector2 = new Vector2();
+                var toNextX:Number = nextX - ptX;
+                var toNextY:Number = nextY - ptY;
+				
+                // var ptNorm:Vector2 = new Vector2();
+                var ptNormX:Number = -(fromPrevY + toNextY);
+                var ptNormY:Number = fromPrevX + toNextX;*/
+				
+                // VectorTools.makePerpendicular(ptNorm);
+				// ptNorm.perpendicular();
                 
                 // this point is inside the other body.  now check if the edges on either side intersect with and edges on bodyB.          
-                var closestAway:Number = 1000000.0;
-                var closestSame:Number = 1000000.0;
+                var closestAway:Number = Number.POSITIVE_INFINITY;
+                var closestSame:Number = Number.POSITIVE_INFINITY;
 				
                 infoAway.Clear();
                 infoAway.bodyA = bA;
@@ -455,41 +501,47 @@ package JelloAS3
 				
                 for (var j:int = 0; j < bBpCount; j++)
                 {
-                    var hitPt:Vector2 = new Vector2();
-                    var norm:Vector2 = new Vector2();
                     var edgeD:Number;
 					
                     b1 = j;
 					
-                    /*if (j < bBpCount - 1)
-                        b2 = j + 1;
-                    else
-                        b2 = 0;*/
-					
 					b2 = (j + 1) % (bBpCount);
 						
-                    var pt1:Vector2 = bB.getPointMass(b1).Position;
-                    var pt2:Vector2 = bB.getPointMass(b2).Position;
+                    // var pt1:Vector2 = bB.getPointMass(b1).Position.clone();
+					var pt1X:Number = bB.mPointMasses[b1].PositionX;
+					var pt1Y:Number = bB.mPointMasses[b1].PositionY;
+					
+                    // var pt2:Vector2 = bB.getPointMass(b2).Position.clone();
+					var pt2X:Number = bB.mPointMasses[b2].PositionX;
+					var pt2Y:Number = bB.mPointMasses[b2].PositionY;
 					
                     // quick test of distance to each point on the edge, if both are greater than current mins, we can skip!
-                    var distToA:Number = ((pt1.X - pt.X) * (pt1.X - pt.X)) + ((pt1.Y - pt.Y) * (pt1.Y - pt.Y));
-                    var distToB:Number = ((pt2.X - pt.X) * (pt2.X - pt.X)) + ((pt2.Y - pt.Y) * (pt2.Y - pt.Y));
-                    
+					var dx1:Number = (pt1X - ptX);
+					var dy1:Number = (pt1Y - ptY);
+					var dx2:Number = (pt2X - ptX);
+					var dy2:Number = (pt2Y - ptY);
+                    var distToA:Number = (dx1 * dx1) + (dy1 * dy1);
+                    var distToB:Number = (dx2 * dx2) + (dy2 * dy2);
 					
                    	if ((distToA > closestAway) && (distToA > closestSame) && (distToB > closestAway) && (distToB > closestSame))
-                       continue;
+					{
+                    	continue;
+					}
 					
 					var e:Array = [0];
 					
                     // test against this edge.
-                    var dist:Number = bB.getClosestPointOnEdgeSquared(pt, j, hitPt, norm, e);
+                    var dist:Number = bB.getClosestPointOnEdgeSquared(ptX, ptY, j, hitPt, norm, e);
 					edgeD = e[0];
-                    
+					
                     // only perform the check if the normal for this edge is facing AWAY from the point normal.
                     var dot:Number;
                     //Vector2.Dot(ptNorm, edgeNorm, out dot);
                     dot = Vector2.Dot(ptNorm, norm);
-                    if (dot <= 0)
+					
+					//trace(hitPt, Math.sqrt(dist));
+					
+                    if (dot <= 0.0)
                     {
                         if (dist < closestAway)
                         {
@@ -498,9 +550,10 @@ package JelloAS3
                             infoAway.bodyBpmA = b1;
                             infoAway.bodyBpmB = b2;
                             infoAway.edgeD = edgeD;
-                            infoAway.hitPt = hitPt;
-                            infoAway.normal = norm;
+							infoAway.hitPt.setToVec(hitPt);
+							infoAway.normal.setToVec(norm);
                             infoAway.penetration = dist;
+							
                             found = true;
                         }
                     }
@@ -513,8 +566,8 @@ package JelloAS3
                             infoSame.bodyBpmA = b1;
                             infoSame.bodyBpmB = b2;
                             infoSame.edgeD = edgeD;
-                            infoSame.hitPt = hitPt;
-                            infoSame.normal = norm;
+							infoSame.hitPt.setToVec(hitPt);
+							infoSame.normal.setToVec(norm);
                             infoSame.penetration = dist;
                         }
                     }
@@ -524,39 +577,45 @@ package JelloAS3
                 if ((found) && (closestAway > mPenetrationThreshold) && (closestSame < closestAway))
                 {
                     infoSame.penetration = Math.sqrt(infoSame.penetration);
-                    infoList.push(infoSame);
+                    infoList.push(infoSame.clone());
                 }
                 else
                 {
                     infoAway.penetration = Math.sqrt(infoAway.penetration);
-                    infoList.push(infoAway);
+                    infoList.push(infoAway.clone());
                 }
             }
         }
 		
+		private var tangent:Vector2 = new Vector2();
+		private var numV:Vector2 = new Vector2();
 		private function _handleCollisions() : void
         {
+			// Let's cache this guy for speed
+			var infinity:Number = Number.POSITIVE_INFINITY;
+			
             // handle all collisions!
-            for (var i:int = 0; i < mCollisionList.length; i++)
+            var collisions_count:int = mCollisionList.length;
+            for (var i:int = 0; i < collisions_count; i++)
             {
                 //BodyCollisionInfo info = mCollisionList[i];
 				var info:BodyCollisionInfo = mCollisionList[i];
-
+				
                 var A:PointMass = info.bodyA.getPointMass(info.bodyApm);
                 var B1:PointMass = info.bodyB.getPointMass(info.bodyBpmA);
                 var B2:PointMass = info.bodyB.getPointMass(info.bodyBpmB);
 
                 // velocity changes as a result of collision.
-                var bVel:Vector2 = new Vector2();
-                bVel.X = (B1.Velocity.X + B2.Velocity.X) * 0.5;
-                bVel.Y = (B1.Velocity.Y + B2.Velocity.Y) * 0.5;
+                // var bVel:Vector2 = new Vector2();
+				
+                var bVelX:Number = (B1.VelocityX + B2.VelocityX) * 0.5;
+                var bVelY:Number = (B1.VelocityY + B2.VelocityY) * 0.5;
 
-                var relVel:Vector2 = new Vector2();
-                relVel.X = A.Velocity.X - bVel.X;
-                relVel.Y = A.Velocity.Y - bVel.Y;
-
-                var relDot:Number;
-                relDot = Vector2.Dot(relVel, info.normal);
+                var relVel:Vector2 = new Vector2(A.VelocityX - bVelX, A.VelocityY - bVelY);
+                /*relVel.X = A.VelocityX - bVelX;
+                relVel.Y = A.VelocityY - bVelY;*/
+				
+                var relDot:Number = Vector2.Dot(relVel, info.normal);
 
                 // collision filter!
                 // if (!mMaterialPairs[info.bodyA.Material, info.bodyB.Material].CollisionFilter(info.bodyA, info.bodyApm, info.bodyB, info.bodyBpmA, info.bodyBpmB, info.hitPt, relDot))
@@ -578,99 +637,101 @@ package JelloAS3
                 var b1inf:Number = 1.0 - info.edgeD;
                 var b2inf:Number = info.edgeD;
 
-                var b2MassSum:Number = ((Number.POSITIVE_INFINITY == (B1.Mass)) || (Number.POSITIVE_INFINITY == (B2.Mass))) ? Number.POSITIVE_INFINITY : (B1.Mass + B2.Mass);
+                var b2MassSum:Number = ((infinity == (B1.Mass)) || (infinity == (B2.Mass))) ? infinity : (B1.Mass + B2.Mass);
 
                 var massSum:Number = A.Mass + b2MassSum;
                 
                 var Amove:Number;
                 var Bmove:Number;
 				
-                if (Number.POSITIVE_INFINITY == A.Mass)
+                if (infinity == A.Mass)
                 {
-                    Amove = 0;
+                    Amove = 0.0;
                     Bmove = (info.penetration) + 0.001;
                 }
-                else if (Number.POSITIVE_INFINITY == b2MassSum)
+                else if (infinity == b2MassSum)
                 {
                     Amove = (info.penetration) + 0.001;
-                    Bmove = 0;
+                    Bmove = 0.0;
                 }
                 else
                 {
-                    Amove = (info.penetration * (b2MassSum / massSum));
-                    Bmove = (info.penetration * (A.Mass / massSum));
+                    /*Amove = (info.penetration * (b2MassSum / massSum));
+                    Bmove = (info.penetration * (A.Mass / massSum));*/
+					var rev_massSum:Number = 1.0 / massSum;
+                    Amove = (info.penetration * (b2MassSum * rev_massSum));
+                    Bmove = (info.penetration * (A.Mass * rev_massSum));
                 }
 
                 var B1move:Number = Bmove * b1inf;
                 var B2move:Number = Bmove * b2inf;
 
-                var AinvMass:Number = (Number.POSITIVE_INFINITY == A.Mass) ? 0 : 1 / A.Mass;
-                var BinvMass:Number = (Number.POSITIVE_INFINITY == b2MassSum) ? 0 : 1 / b2MassSum;
+                var AinvMass:Number = (infinity == A.Mass) ? 0 : 1.0 / A.Mass;
+                var BinvMass:Number = (infinity == b2MassSum) ? 0 : 1.0 / b2MassSum;
 
                 var jDenom:Number = AinvMass + BinvMass;
-                var numV:Vector2 = new Vector2();
                 var elas:Number = 1 + mMaterialPairs[info.bodyA.Material][info.bodyB.Material].Elasticity;
-                numV.X = relVel.X * elas;
-                numV.Y = relVel.Y * elas;
+				//var numV:Vector2 = new Vector2(relVel.X * elas, relVel.Y * elas);
+				numV.setTo(relVel.X * elas, relVel.Y * elas);
+				
+				var rev_jDenom = 1 / jDenom;
+                var j:Number = -Vector2.Dot(numV, info.normal) * rev_jDenom;
+				var infoNormal:Vector2 = info.normal;
 
-                var jNumerator:Number;
-                jNumerator = -Vector2.Dot(numV, info.normal);
-                // jNumerator = -jNumerator;
-
-                var j:Number = jNumerator / jDenom;
-
-                if (!(Number.POSITIVE_INFINITY == (A.Mass)))
+                if (infinity != A.Mass && b2MassSum == infinity)
                 {
-                    A.Position.X += info.normal.X * Amove;
-                    A.Position.Y += info.normal.Y * Amove;
+                    A.PositionX += infoNormal.X * Amove;
+                    A.PositionY += infoNormal.Y * Amove;
                 }
 
-                if (!(Number.POSITIVE_INFINITY == (B1.Mass)))
+                if (infinity != B1.Mass)
                 {
-                    B1.Position.X -= info.normal.X * B1move;
-                    B1.Position.Y -= info.normal.Y * B1move;
+                   	B1.PositionX -= infoNormal.X * B1move;
+                    B1.PositionY -= infoNormal.Y * B1move;
                 }
 
-                if (!(Number.POSITIVE_INFINITY == (B2.Mass)))
+                if (infinity != B2.Mass)
                 {
-                    B2.Position.X -= info.normal.X * B2move;
-                    B2.Position.Y -= info.normal.Y * B2move;
+                    B2.PositionX -= infoNormal.X * B2move;
+                    B2.PositionY -= infoNormal.Y * B2move;
                 }
-                
-                var tangent:Vector2 = new Vector2();
                 
 				VectorTools.getPerpendicular(info.normal, tangent);
 				
                 var friction:Number = mMaterialPairs[info.bodyA.Material][info.bodyB.Material].Friction;
-                var fNumerator:Number;
-                fNumerator = Vector2.Dot(relVel, tangent) * friction;
-                // fNumerator *= friction;
-                var f:Number = fNumerator / jDenom;
+                var f:Number = (Vector2.Dot(relVel, tangent) * friction) * rev_jDenom;
+				
+				var jMult:Number = 0;
+				var fMult:Number = 0;
 				
                 // adjust velocity if relative velocity is moving toward each other.
                 if (relDot <= 0.0001)
                 {
-                    if (Number.POSITIVE_INFINITY != A.Mass)
+                    if (infinity != A.Mass)
                     {
-                        A.Velocity.X += (info.normal.X * (j / A.Mass)) - (tangent.X * (f / A.Mass));
-                        A.Velocity.Y += (info.normal.Y * (j / A.Mass)) - (tangent.Y * (f / A.Mass));
+						var rev_AMass:Number = 1 / A.Mass;
+						jMult = j * rev_AMass;
+						fMult = f * rev_AMass;
+						
+						A.VelocityX += (info.normal.X * jMult) - (tangent.X * fMult);
+                        A.VelocityY += (info.normal.Y * jMult) - (tangent.Y * fMult);
                     }
 
-                    if (Number.POSITIVE_INFINITY != b2MassSum)
+                    if (infinity != b2MassSum)
                     {
-                        B1.Velocity.X -= (info.normal.X * (j / b2MassSum) * b1inf) - (tangent.X * (f / b2MassSum) * b1inf);
-                        B1.Velocity.Y -= (info.normal.Y * (j / b2MassSum) * b1inf) - (tangent.Y * (f / b2MassSum) * b1inf);
-                    }
-
-                    if (Number.POSITIVE_INFINITY != b2MassSum)
-                    {
-                        B2.Velocity.X -= (info.normal.X * (j / b2MassSum) * b2inf) - (tangent.X * (f / b2MassSum) * b2inf);
-                        B2.Velocity.Y -= (info.normal.Y * (j / b2MassSum) * b2inf) - (tangent.Y * (f / b2MassSum) * b2inf);
+						jMult = j / b2MassSum;
+						fMult = f / b2MassSum;
+						
+                        B1.VelocityX -= (info.normal.X * jMult * b1inf) - (tangent.X * fMult * b1inf);
+                        B1.VelocityY -= (info.normal.Y * jMult * b1inf) - (tangent.Y * fMult * b1inf);
+						
+                        B2.VelocityX -= (info.normal.X * jMult * b2inf) - (tangent.X * fMult * b2inf);
+                        B2.VelocityY -= (info.normal.Y * jMult * b2inf) - (tangent.Y * fMult * b2inf);
                     }
                 }
             }
 			
-            mCollisionList.length = 0;
+			mCollisionList.length = 0;
         }
 		
         // DEBUG VISUALIZATION

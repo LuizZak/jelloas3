@@ -20,7 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-package JelloAS3 {
+package JelloAS3
+{
 	import flash.display.Graphics;
 	
 	public class DraggableSpringBody extends SpringBody
@@ -36,8 +37,7 @@ package JelloAS3 {
         var mColor:int = 0xFFFFFF;
         var mDistressColor:int = 0xFF0000;
 
-        public function DraggableSpringBody(w:World, s:ClosedShape, massPerPoint:Number, shapeSpringK:Number, shapeSpringDamp:Number,
-											edgeSpringK:Number, edgeSpringDamp:Number, pos:Vector2, angleInRadians:Number, scale:Vector2) : void
+        public function DraggableSpringBody(w:World, s:ClosedShape, massPerPoint:Number, shapeSpringK:Number, shapeSpringDamp:Number, edgeSpringK:Number, edgeSpringDamp:Number, pos:Vector2, angleInRadians:Number, scale:Vector2) : void
         {
 			super(w, s, massPerPoint, shapeSpringK, shapeSpringDamp, edgeSpringK, edgeSpringDamp, pos, angleInRadians, scale, false)
 			
@@ -59,10 +59,10 @@ package JelloAS3 {
 
             mIndices = new int[mIndexList.Count];
             for (int i = 0; i < mIndexList.Count; i++)
-                mIndices[i] = mIndexList[i];
+                mIndices[i] = mIndexList[i];*/
 
             mColor = c;
-            mDistressColor = d;*/
+            mDistressColor = d;
         }
 
         public function setDragForce(force:Vector2, pm:int) : void
@@ -79,46 +79,46 @@ package JelloAS3 {
             // gravity.
             for (var i:int = 0; i < mPointMasses.length; i++)
             {
-                mPointMasses[i].Force.Y += -9.8 * mPointMasses[i].Mass;
+                mPointMasses[i].ForceY += -9.8 * mPointMasses[i].Mass;
             }
 
             // dragging force.
             if (dragPoint != -1)
-                mPointMasses[dragPoint].Force.plusEquals(dragForce);
+			{
+                mPointMasses[dragPoint].ForceX += dragForce.X;
+				mPointMasses[dragPoint].ForceY += dragForce.Y;
+			}
 
             dragPoint = -1;
         }
+		
+		public function drawMe(g:Graphics) : void
+		{
+			var s:Vector2 = RenderingSettings.Scale;
+			var p:Vector2 = RenderingSettings.Offset;
+			
+			var v:Vector.<Number> = new Vector.<Number>();
+			
+			g.beginFill(mColor)
+			
+			for (var i:int = 0; i < mPointMasses.length; i++)
+            {
+				var posX:Number = mPointMasses[i].PositionX * s.X + p.X;
+				var posY:Number = mPointMasses[i].PositionY * s.Y + p.Y;
+				
+				// v.push(posX, posY);
+				if(i == 0)
+					g.moveTo(posX, posY);
+				
+				g.lineTo(posX, posY);
+            }
+			
+			g.endFill();
+		}
 
-
-        public function drawMe(g:Graphics) : void
+        public override function debugDrawMe(g:Graphics) : void
         {
-            /*if (mDecl == null)
-            {
-                mDecl = new VertexDeclaration(device, VertexPositionColor.VertexElements);
-            }
-
-            // update vert buffer.
-            for (int i = 0; i < mPointMasses.Count; i++)
-            {
-                mVerts[i].Position = JelloPhysics.VectorTools.vec3FromVec2(mPointMasses[i].Position);
-
-                float dist = (mPointMasses[i].Position - mGlobalShape[i]).Length() * 2.0f;
-                if (dist > 1f) { dist = 1f; }
-                
-                mVerts[i].Color = new Color(Vector3.Lerp(mColor.ToVector3(), mDistressColor.ToVector3(),dist));
-            }
-
-            device.VertexDeclaration = mDecl;
-
-            // draw me!
-            effect.Begin();
-            foreach (EffectPass pass in effect.CurrentTechnique.Passes)
-            {
-                pass.Begin();
-                device.DrawUserIndexedPrimitives<VertexPositionColor>(PrimitiveType.TriangleList, mVerts, 0, mVerts.Length, mIndices, 0, mIndices.Length / 3);
-                pass.End();
-            }
-            effect.End();*/
+			super.debugDrawMe(g);
         }
     }
 }

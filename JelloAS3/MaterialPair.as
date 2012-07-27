@@ -1,4 +1,4 @@
-/*
+﻿/*
 Copyright (c) 2007 Walaber
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -50,5 +50,17 @@ package JelloAS3
 		/// Collision filter function.
 		/// </summary>
 		public var CollisionFilter:Function;
+		
+		public function clone() : MaterialPair
+		{
+			var mp:MaterialPair = new MaterialPair();
+			
+			mp.Collide = Collide;
+			mp.Elasticity = Elasticity;
+			mp.Friction = Friction;
+			mp.CollisionFilter = CollisionFilter;
+			
+			return mp;
+		}
 	}
 }
