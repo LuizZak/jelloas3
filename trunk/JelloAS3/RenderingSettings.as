@@ -16,6 +16,6 @@
 		public static var Scale:Vector2 = new Vector2(25.8, -25.8);
 		
 		// The offset is independent of the scale, unlike Flash DisplayObject's x-y coordinates and scaleX-scaleY
-		public static var Offset:Vector2 = new Vector2(400, 21);
+		public static var Offset:Vector2 = new Vector2(300, -50);
 	}
 }

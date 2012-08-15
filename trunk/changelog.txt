@@ -1,5 +1,10 @@
 JelloAS3
 
+v0.8.0
+
+* Fixed one final bug that skipped body collision resolving, fixing the last issue causing bodies to penetrate each other.
++ Now pressure bodies debugDrawMe also render normals, rest points and points
+
 v0.7.0
 
 * Various performance improvements and optimizations (thanks to Dmitry Shipenok for providing a handful of them)
