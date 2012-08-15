@@ -24,8 +24,9 @@ THE SOFTWARE.
 package JelloAS3 
 {
 	import flash.display.Graphics;
-	import JelloAS3.*;
-	import flash.utils.getTimer;
+	import flash.utils.*;
+	
+	import JelloAS3.*;	
 	
 	/**
 	 * ...
@@ -372,7 +373,9 @@ package JelloAS3
 
             // now dampen velocities.
             for (i = 0; i < body_count; i++)
+			{
                 mBodies[i].dampenVelocity();
+			}
         }
 
         private function updateBodyBitmask(body:Body) : void
@@ -452,7 +455,6 @@ package JelloAS3
 				var nextY:Number = bA.mPointMasses[nextPt].PositionY;
 				
                 // now get the normal for this point. (NOT A UNIT VECTOR)
-				
                 fromPrev.X = ptX - prevX;
                 fromPrev.Y = ptY - prevY;
 				
@@ -464,21 +466,6 @@ package JelloAS3
 				
                 // VectorTools.makePerpendicular(ptNorm);
 				ptNorm = ptNorm.perpendicular();
-				
-				// var fromPrev:Vector2 = new Vector2();
-                /*var fromPrevX:Number = ptX - prevX;
-                var fromPrevY:Number = ptY - prevY;
-				
-                // var toNext:Vector2 = new Vector2();
-                var toNextX:Number = nextX - ptX;
-                var toNextY:Number = nextY - ptY;
-				
-                // var ptNorm:Vector2 = new Vector2();
-                var ptNormX:Number = -(fromPrevY + toNextY);
-                var ptNormY:Number = fromPrevX + toNextX;*/
-				
-                // VectorTools.makePerpendicular(ptNorm);
-				// ptNorm.perpendicular();
                 
                 // this point is inside the other body.  now check if the edges on either side intersect with and edges on bodyB.          
                 var closestAway:Number = Number.POSITIVE_INFINITY;
@@ -504,16 +491,16 @@ package JelloAS3
                     var edgeD:Number;
 					
                     b1 = j;
-					
 					b2 = (j + 1) % (bBpCount);
-						
-                    // var pt1:Vector2 = bB.getPointMass(b1).Position.clone();
+					
+					// This bit was somehow causing the collision pass to skip even when a valid penetration was found, so I removed it for now.
+					/*
 					var pt1X:Number = bB.mPointMasses[b1].PositionX;
 					var pt1Y:Number = bB.mPointMasses[b1].PositionY;
 					
-                    // var pt2:Vector2 = bB.getPointMass(b2).Position.clone();
 					var pt2X:Number = bB.mPointMasses[b2].PositionX;
 					var pt2Y:Number = bB.mPointMasses[b2].PositionY;
+					
 					
                     // quick test of distance to each point on the edge, if both are greater than current mins, we can skip!
 					var dx1:Number = (pt1X - ptX);
@@ -526,7 +513,8 @@ package JelloAS3
                    	if ((distToA > closestAway) && (distToA > closestSame) && (distToB > closestAway) && (distToB > closestSame))
 					{
                     	continue;
-					}
+					}*/
+					
 					
 					var e:Array = [0];
 					
@@ -594,7 +582,7 @@ package JelloAS3
 			// Let's cache this guy for speed
 			var infinity:Number = Number.POSITIVE_INFINITY;
 			
-            // handle all collisions!
+			// handle all collisions!
             var collisions_count:int = mCollisionList.length;
             for (var i:int = 0; i < collisions_count; i++)
             {
@@ -704,6 +692,8 @@ package JelloAS3
 				var jMult:Number = 0;
 				var fMult:Number = 0;
 				
+				//trace(relDot);
+				
                 // adjust velocity if relative velocity is moving toward each other.
                 if (relDot <= 0.0001)
                 {
@@ -715,6 +705,8 @@ package JelloAS3
 						
 						A.VelocityX += (info.normal.X * jMult) - (tangent.X * fMult);
                         A.VelocityY += (info.normal.Y * jMult) - (tangent.Y * fMult);
+						
+						//trace(rev_AMass, info.normal, tangent);
                     }
 
                     if (infinity != b2MassSum)
@@ -809,6 +801,22 @@ package JelloAS3
                 }
                 effect.End();
             }*/
+			
+			g.clear();
+			
+			var s:Vector2 = RenderingSettings.Scale;
+			var p:Vector2 = RenderingSettings.Offset;
+			
+			g.lineStyle(1, 0xFFFF00);
+			
+			for(var i:int = 0; i < mBodies.length; i++)
+			{
+				for(var pm:int = 0; pm < mBodies[i].mPointMasses.length; pm++)
+				{
+					g.moveTo(mBodies[i].mPointMasses[pm].PositionX * s.X + p.X, mBodies[i].mPointMasses[pm].PositionY * s.Y + p.Y);
+					g.lineTo((mBodies[i].mPointMasses[pm].PositionX + mBodies[i].mPointMasses[pm].VelocityX * 0.25) * s.X + p.X, (mBodies[i].mPointMasses[pm].PositionY + mBodies[i].mPointMasses[pm].VelocityY * 0.25) * s.Y + p.Y);
+				}
+			}
         }
 		
         private function defaultCollisionFilter(A:Body, Apm:int, B:Body, Bpm1:int, Bpm2:int, hitPt:Vector2, normSpeed:Number) : Boolean
@@ -824,6 +832,8 @@ package JelloAS3
         /// <param name="drawAABBs"></param>
         public function debugDrawAllBodies(g:Graphics, drawAABBs:Boolean) : void
         {
+			debugDrawPointVelocities(g);
+			
             for (var i:int = 0; i < mBodies.length; i++)
             {
                 if (drawAABBs)

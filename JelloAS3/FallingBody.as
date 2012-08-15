@@ -21,9 +21,11 @@ THE SOFTWARE.
 */
 
 
-package JelloAS3 {
+package JelloAS3
+{
 	
-	public class FallingBody extends SpringBody {
+	public class FallingBody extends SpringBody
+	{
 
 		public function FallingBody(w:World, s:ClosedShape, massPerPoint:Number, edgeSpringK:Number, edgeSpringDamp:Number, pos:Vector2, angle:Number, scale:Vector2)
         {

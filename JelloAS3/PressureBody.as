@@ -170,8 +170,6 @@ package JelloAS3
         // DEBUG VISUALIZATION
         public override function debugDrawMe(g:Graphics) : void
         {
-            super.debugDrawMe(g);
-			
             // draw edge normals!
             // VertexPositionColor[] normals = new VertexPositionColor[mPointMasses.Count * 2];
 			
@@ -203,31 +201,15 @@ package JelloAS3
                 if (nL > 0.001)
                     norm.normalizeThis();
 				
-				/*if (i == 0) {
-					g.moveTo(mPointMasses[i].Position.X, mPointMasses[i].Position.Y);
-				} else {*/
-					g.lineStyle(1, 0xFFFF00);
-					g.moveTo(mPointMasses[i].PositionX * s.X + p.X, mPointMasses[i].PositionY * s.Y + p.Y);
-					
-					g.lineStyle(1, 0xF0FFF0);
-					g.lineTo((mPointMasses[i].PositionX + norm.X) * s.X + p.X, (mPointMasses[i].PositionY + norm.Y) * s.Y + p.Y);
-				//}
+				norm.multEquals(mPointMasses[i].Mass);
 				
-                /*normals[(i * 2) + 0].Position = VectorTools.vec3FromVec2(mPointMasses[i].Position);
-                normals[(i * 2) + 0].Color = Color.Yellow;
-				
-                normals[(i * 2) + 1].Position = VectorTools.vec3FromVec2(mPointMasses[i].Position + norm);
-                normals[(i * 2) + 1].Color = Color.Honeydew;*/
+				//g.lineStyle(1, 0xFFFF00);
+				g.lineStyle(1, 0xF0FFF0);
+				g.moveTo(mPointMasses[i].PositionX * s.X + p.X, mPointMasses[i].PositionY * s.Y + p.Y);
+				g.lineTo((mPointMasses[i].PositionX + norm.X) * s.X + p.X, (mPointMasses[i].PositionY + norm.Y) * s.Y + p.Y);
             }
-
-            /*effect.Begin();
-            foreach (EffectPass pass in effect.CurrentTechnique.Passes)
-            {
-                pass.Begin();
-                device.DrawUserPrimitives<VertexPositionColor>(PrimitiveType.LineList, normals, 0, mPointMasses.Count);
-                pass.End();
-            }
-            effect.End();*/
+			
+			super.debugDrawMe(g);
         }
     }
 }

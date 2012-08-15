@@ -290,16 +290,16 @@ package JelloAS3
 			
             for (var i:int = 0; i < mPointMasses.length; i++)
             {
-				//g.beginFill(0x7CFC00);
+				g.beginFill(0x7CFC00);
 				
 				var x:Number = mPointMasses[i].PositionX// - RenderingSettings.PointSize / 2;
 				var y:Number = mPointMasses[i].PositionY// - RenderingSettings.PointSize / 2;
 				var w:Number = RenderingSettings.PointSize * 2;
 				var h:Number = RenderingSettings.PointSize * 2;
 				
-				//g.drawRect(x * s.X + p.X - RenderingSettings.PointSize, y * s.Y + p.Y - RenderingSettings.PointSize, w, h);
+				g.drawRect(x * s.X + p.X - RenderingSettings.PointSize, y * s.Y + p.Y - RenderingSettings.PointSize, w, h);
 				
-				//g.endFill();
+				g.endFill();
 				
 				g.beginFill(0x808080);
 				
@@ -326,17 +326,6 @@ package JelloAS3
 				g.moveTo(mPointMasses[mSprings[i].pointMassA].PositionX * s.X + p.X, mPointMasses[mSprings[i].pointMassA].PositionY * s.Y + p.Y);
 				g.lineTo(mPointMasses[mSprings[i].pointMassB].PositionX * s.X + p.X, mPointMasses[mSprings[i].pointMassB].PositionY * s.Y + p.Y);
             }
-			
-            /*device.VertexDeclaration = mVertexDecl;
-            effect.Begin();
-            foreach (EffectPass pass in effect.CurrentTechnique.Passes)
-            {
-                pass.Begin();
-                device.DrawUserPrimitives<VertexPositionColor>(PrimitiveType.LineList, shape, 0, mPointMasses.Count);
-                device.DrawUserPrimitives<VertexPositionColor>(PrimitiveType.LineList, springs, 0, mSprings.Count);
-                pass.End();
-            }
-            effect.End();*/
 			
 			super.debugDrawMe(g);
         }

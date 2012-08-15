@@ -61,6 +61,43 @@ package JelloAS3
 		
         // CONSTRUCTORS
 		
+		/// <summary>
+        /// create a body, and set its shape and position immediately - with individual masses for each PointMass.
+        /// </summary>
+        /// <param name="w">world to add this body to (done automatically)</param>
+        /// <param name="shape">closed shape for this body</param>
+        /// <param name="pointMasses">list of masses for each PointMass</param>
+        /// <param name="position">global position of the body</param>
+        /// <param name="angleInRadians">global angle of the body</param>
+        /// <param name="scale">local scale of the body</param>
+        /// <param name="kinematic">whether this body is kinematically controlled.</param>
+        public function Body(w:World, shape:ClosedShape, pointMasses:Array, position:Vector2, angleInRadians:Number, scale:Vector2, kinematic:Boolean) : void
+        {
+            mAABB = new AABB();
+            mDerivedPos = position;
+            mDerivedAngle = angleInRadians;
+            mLastAngle = mDerivedAngle;
+            mScale = scale;
+            mMaterial = 0;
+            mIsStatic = false;
+            mKinematic = kinematic;
+			
+            mPointMasses = new Vector.<PointMass>();
+            setShape(shape);
+			
+            for (var i:int = 0; i < mPointMasses.length; i++)
+			{
+                mPointMasses[i].Mass = pointMasses[i];
+			}
+				
+            updateAABB(0, true);
+			
+			if(w != null)
+			{
+            	w.addBody(this);
+			}
+        }
+		
         /// <summary>
         /// default constructor.
         /// </summary>
@@ -110,40 +147,6 @@ package JelloAS3
 			
             w.addBody(this);
         }*/
-		
-        /// <summary>
-        /// create a body, and set its shape and position immediately - with individual masses for each PointMass.
-        /// </summary>
-        /// <param name="w">world to add this body to (done automatically)</param>
-        /// <param name="shape">closed shape for this body</param>
-        /// <param name="pointMasses">list of masses for each PointMass</param>
-        /// <param name="position">global position of the body</param>
-        /// <param name="angleInRadians">global angle of the body</param>
-        /// <param name="scale">local scale of the body</param>
-        /// <param name="kinematic">whether this body is kinematically controlled.</param>
-        public function Body(w:World, shape:ClosedShape, pointMasses:Array, position:Vector2, angleInRadians:Number, scale:Vector2, kinematic:Boolean) : void
-        {
-            mAABB = new AABB();
-            mDerivedPos = position;
-            mDerivedAngle = angleInRadians;
-            mLastAngle = mDerivedAngle;
-            mScale = scale;
-            mMaterial = 0;
-            mIsStatic = false;
-            mKinematic = kinematic;
-			
-            mPointMasses = new Vector.<PointMass>();
-            setShape(shape);
-			
-            for (var i:int = 0; i < mPointMasses.length; i++)
-			{
-                mPointMasses[i].Mass = pointMasses[i];
-			}
-				
-            updateAABB(0, true);
-			
-            w.addBody(this);
-        }
         
 		
         // SETTING SHAPE
@@ -428,7 +431,7 @@ package JelloAS3
 			var l:int = mPointMasses.length;
 			var reverse_length:Number = 1.0 / l;
 			
-			//if(!mIsPined)
+			if(!mIsPined)
 			{
 				// find the geometric center.
 				//var center:Vector2 = new Vector2();
@@ -895,10 +898,8 @@ package JelloAS3
             else
             {
                 // point lies somewhere on the line segment.
-                
                 toP3.X = toP.X;
                 toP3.Y = toP.Y;
-				
                 
                 E3.X = E.X;
                 E3.Y = E.Y;
@@ -906,7 +907,8 @@ package JelloAS3
                 //dist = Math.Abs(Vector3.Cross(toP3, E3).Z);
                 Vector3.Cross(toP3, E3, E3);
                 
-				dist = (E3.Z < 0.0 ? -E3.Z : E3.Z);
+				//dist = (E3.Z < 0.0 ? -E3.Z : E3.Z);
+				dist = E3.Z;
 				
                 hitPt.X = ptAX + (E.X * x);
                 hitPt.Y = ptAY + (E.Y * x);
@@ -929,37 +931,10 @@ package JelloAS3
         /// <returns>distance</returns>
         public function getClosestPointOnEdgeSquared(ptX:Number, ptY:Number, edgeNum:int, hitPt:Vector2, normal:Vector2, edgeD:Array) : Number
         {
-            /*hitPt = new Vector2();
-            hitPt.X = 0;
-            hitPt.Y = 0;
-			
-           	normal = new Vector2();
-            normal.X = 0;
-            normal.Y = 0;*/
-			
             edgeD[0] = 0;
             var dist:Number = 0;
-            
-			/*var ptA:Vector2 = mPointMasses[edgeNum].Position.clone();
-            var ptB:Vector2 = new Vector2();
 			
-            if (edgeNum < (mPointMasses.length - 1))
-                ptB = mPointMasses[edgeNum + 1].Position.clone();
-            else
-                ptB = mPointMasses[0].Position.clone();
-				
-            var toP:Vector2 = new Vector2();
-            toP.X = pt.X - ptA.X;
-            toP.Y = pt.Y - ptA.Y;
-			
-            var E:Vector2 = new Vector2();
-            E.X = ptB.X - ptA.X;
-            E.Y = ptB.Y - ptA.Y;*/
-			
-			
-			var p:PointMass;
-			
-			p = mPointMasses[edgeNum];
+			var p:PointMass = mPointMasses[edgeNum];
 			
 			var ptAX:Number = p.PositionX;
 			var ptAY:Number = p.PositionY;
@@ -982,18 +957,16 @@ package JelloAS3
 				ptBY = p.PositionY;
 			}
 			
-            //var toP:Vector2 = new Vector2();
             toP.X = ptX - ptAX;
             toP.Y = ptY - ptAY;
 			
-            //var E:Vector2 = new Vector2();
             E.X = ptBX - ptAX;
             E.Y = ptBY - ptAY;
 			
             // get the length of the edge, and use that to normalize the vector.
             var edgeLength:Number = Math.sqrt((E.X * E.X) + (E.Y * E.Y));
 			
-            if (edgeLength > 0.00001)
+            if (edgeLength > 0.0000001)
             {
                 E.X /= edgeLength;
                 E.Y /= edgeLength;
@@ -1003,8 +976,11 @@ package JelloAS3
             //var n:Vector2 = new Vector2();
             // VectorTools.getPerpendicular(E, n);
 			
-			n.X = -E.Y;
-			n.Y = E.X;
+			/*n.X = -E.Y;
+			n.Y = E.X;*/
+			
+			var nX:Number = -E.Y;
+			var nY:Number = E.X;
 			
             // calculate the distance!
             var x:Number;
@@ -1012,6 +988,7 @@ package JelloAS3
 			
             if (x <= 0.0)
             {
+				//trace(1);
                 // x is outside the line segment, distance is from pt to ptA.
                 //dist = (pt - ptA).Length();
                 //dist = Vector2.DistanceSquared(new Vector2(ptX, ptY), new Vector2(ptAX, ptAY));
@@ -1024,11 +1001,12 @@ package JelloAS3
                 edgeD[0] = 0;
 				
                 //normal.setToVec(n);
-				normal.X = n.X;
-				normal.Y = n.Y;
+				normal.X = nX;
+				normal.Y = nY;
             }
             else if (x >= edgeLength)
             {
+				//trace(2);
                 // x is outside of the line segment, distance is from pt to ptB.
                 //dist = (pt - ptB).Length();
                 dist = Vector2.DistanceSquared(new Vector2(ptX, ptY), new Vector2(ptBX, ptBY));
@@ -1040,34 +1018,30 @@ package JelloAS3
                 edgeD[0] = 1;
                 
 				//normal.setToVec(n);
-				normal.X = n.X;
-				normal.Y = n.Y;
+				normal.X = nX;
+				normal.Y = nY;
             }
             else
             {
+				//trace(3);
                 // point lies somewhere on the line segment.
-                //var toP3:Vector3 = new Vector3();
                 toP3.X = toP.X;
                 toP3.Y = toP.Y;
 				
-                //var E3:Vector3 = new Vector3();
                 E3.X = E.X;
                 E3.Y = E.Y;
 				
-                // dist = Math.Abs(Vector3.Cross(toP3, E3).Z);
+                //dist = Math.Abs(Vector3.Cross(toP3, E3).Z);
                 Vector3.Cross(toP3, E3, E3);
 				
                 dist = E3.Z * E3.Z;
-				
-				//dist = dist < 0 ? -dist : dist;
 				
                 hitPt.X = ptAX + (E.X * x);
                 hitPt.Y = ptAY + (E.Y * x);
                 edgeD[0] = x / edgeLength;
 				
-                // normal.setToVec(n);
-				normal.X = n.X;
-				normal.Y = n.Y;
+				normal.X = nX;
+				normal.Y = nY;
             }
 			
 			//trace(dist);

@@ -46,7 +46,7 @@ package JelloAS3
         }
 
         // add an indexed triangle to this primitive.
-         public function addTriangle(A:int, B:int, C:int) : void
+        public function addTriangle(A:int, B:int, C:int) : void
         {
             mIndexList.push(A);
             mIndexList.push(B);
@@ -97,7 +97,7 @@ package JelloAS3
 
         public function drawMe(g:Graphics) : void
         {
-			//super.debugDrawMe(g);
+			super.debugDrawMe(g);
 			var pm_count = mPointMasses.length;
 			
 			var s:Vector2 = RenderingSettings.Scale;
